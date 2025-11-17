@@ -136,6 +136,31 @@ export function createOverviewSection(data) {
     });
   }
 
+  // Öffentlicher Nahverkehr Section
+  const showPublicTransport = config.show_public_transport === true;
+  const publicTransportEntities = (config.public_transport_entities || [])
+    .filter(entityId => hass.states[entityId] !== undefined);
+
+  if (showPublicTransport && publicTransportEntities.length > 0) {
+    cards.push({
+      type: "heading",
+      heading: "Öffentlicher Nahverkehr",
+      heading_style: "title",
+      icon: "mdi:bus"
+    });
+    
+    // Erstelle eine Card für jede Public Transport Entity
+    publicTransportEntities.forEach(entityId => {
+      cards.push({
+        type: "custom:hvv-card",
+        entity: entityId,
+        grid_options: {
+          columns: publicTransportEntities.length > 1 ? "half" : "full"
+        }
+      });
+    });
+  }
+
   return {
     type: "grid",
     cards: cards
