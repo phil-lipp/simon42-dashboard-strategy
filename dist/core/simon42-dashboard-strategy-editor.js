@@ -142,9 +142,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     const areaOrder = this._config.areas_display?.order || [];
 
     // Setze HTML-Inhalt mit Styles und Template
-    this.innerHTML = `
-      <style>${getEditorStyles()}</style>
-      ${renderEditorHTML({ 
+    try {
+      const editorHTML = renderEditorHTML({ 
         allAreas, 
         hiddenAreas, 
         areaOrder, 
@@ -166,8 +165,29 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
         hasBetterThermostatDeps,
         showPublicTransport,
         publicTransportEntities
-      })}
-    `;
+      });
+      
+      this.innerHTML = `
+        <style>${getEditorStyles()}</style>
+        ${editorHTML}
+      `;
+    } catch (error) {
+      console.error('Error rendering editor template:', error);
+      this.innerHTML = `
+        <style>${getEditorStyles()}</style>
+        <div class="card-config">
+          <div class="section">
+            <div class="section-title">Fehler</div>
+            <div class="description" style="color: red;">
+              Fehler beim Laden des Editors: ${error.message}
+              <br><br>
+              Bitte überprüfen Sie die Browser-Konsole für weitere Details.
+            </div>
+          </div>
+        </div>
+      `;
+      return;
+    }
 
     // Binde Event-Listener
     attachWeatherCheckboxListener(this, (showWeather) => this._showWeatherChanged(showWeather));

@@ -3,6 +3,34 @@
 // ====================================================================
 // HTML-Template für den Dashboard Strategy Editor
 
+function renderPublicTransportList(publicTransportEntities, allEntities) {
+  if (!publicTransportEntities || publicTransportEntities.length === 0) {
+    return '<div class="empty-state" style="padding: 12px; text-align: center; color: var(--secondary-text-color); font-style: italic;">Keine Entitäten hinzugefügt</div>';
+  }
+
+  const entityMap = new Map(allEntities.map(e => [e.entity_id, e.name]));
+
+  return `
+    <div style="border: 1px solid var(--divider-color); border-radius: 4px; overflow: hidden;">
+      ${publicTransportEntities.map((entityId) => {
+        const name = entityMap.get(entityId) || entityId;
+        return `
+          <div class="public-transport-item" data-entity-id="${entityId}" style="display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--divider-color); background: var(--card-background-color);">
+            <span class="drag-handle" style="margin-right: 12px; cursor: grab; color: var(--secondary-text-color);">☰</span>
+            <span style="flex: 1; font-size: 14px;">
+              <strong>${name}</strong>
+              <span style="margin-left: 8px; font-size: 12px; color: var(--secondary-text-color); font-family: monospace;">${entityId}</span>
+            </span>
+            <button class="remove-public-transport-btn" data-entity-id="${entityId}" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); cursor: pointer;">
+              ✕
+            </button>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
 export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy, showWeather, showSummaryViews, showRoomViews, showSearchCard, hasSearchCardDeps, summariesColumns, alarmEntity, alarmEntities, favoriteEntities, roomPinEntities, allEntities, groupByFloors, showCoversSummary, showBetterThermostat = false, hasBetterThermostatDeps = false, showPublicTransport = false, publicTransportEntities = [] }) {
   return `
     <div class="card-config">
@@ -148,7 +176,7 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
           Zeigt Abfahrtszeiten des öffentlichen Nahverkehrs in der Übersicht an. Verwenden Sie die hvv-card für die Anzeige.
         </div>
         <div id="public-transport-list" style="margin-top: 12px; margin-bottom: 12px;">
-          ${renderPublicTransportList(publicTransportEntities || [], allEntities)}
+          ${renderPublicTransportList(publicTransportEntities || [], allEntities || [])}
         </div>
         <div style="display: flex; gap: 8px; align-items: flex-start;">
           <select id="public-transport-entity-select" style="flex: 1; min-width: 0; padding: 8px; border-radius: 4px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color);">
@@ -320,34 +348,6 @@ export function renderRoomPinsList(roomPinEntities, allEntities, allAreas) {
               <span style="font-size: 11px; color: var(--secondary-text-color);">📍 ${areaName}</span>
             </span>
             <button class="remove-room-pin-btn" data-entity-id="${entityId}" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); cursor: pointer;">
-              ✕
-            </button>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
-}
-
-function renderPublicTransportList(publicTransportEntities, allEntities) {
-  if (!publicTransportEntities || publicTransportEntities.length === 0) {
-    return '<div class="empty-state" style="padding: 12px; text-align: center; color: var(--secondary-text-color); font-style: italic;">Keine Entitäten hinzugefügt</div>';
-  }
-
-  const entityMap = new Map(allEntities.map(e => [e.entity_id, e.name]));
-
-  return `
-    <div style="border: 1px solid var(--divider-color); border-radius: 4px; overflow: hidden;">
-      ${publicTransportEntities.map((entityId) => {
-        const name = entityMap.get(entityId) || entityId;
-        return `
-          <div class="public-transport-item" data-entity-id="${entityId}" style="display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--divider-color); background: var(--card-background-color);">
-            <span class="drag-handle" style="margin-right: 12px; cursor: grab; color: var(--secondary-text-color);">☰</span>
-            <span style="flex: 1; font-size: 14px;">
-              <strong>${name}</strong>
-              <span style="margin-left: 8px; font-size: 12px; color: var(--secondary-text-color); font-family: monospace;">${entityId}</span>
-            </span>
-            <button class="remove-public-transport-btn" data-entity-id="${entityId}" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); cursor: pointer;">
               ✕
             </button>
           </div>
