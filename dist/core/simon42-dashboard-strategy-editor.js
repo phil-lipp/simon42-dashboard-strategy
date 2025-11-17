@@ -111,7 +111,13 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     const favoriteEntities = this._config.favorite_entities || [];
     const roomPinEntities = this._config.room_pin_entities || [];
     const hasSearchCardDeps = this._checkSearchCardDependencies();
-    const hasBetterThermostatDeps = this._checkBetterThermostatDependencies();
+    let hasBetterThermostatDeps = false;
+    try {
+      hasBetterThermostatDeps = this._checkBetterThermostatDependencies();
+    } catch (e) {
+      console.warn('Error checking Better Thermostat dependencies:', e);
+      hasBetterThermostatDeps = false;
+    }
     
     // Sammle alle Alarm-Control-Panel-Entitäten
     const alarmEntities = Object.keys(this._hass.states)
