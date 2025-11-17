@@ -32,6 +32,14 @@ function renderPublicTransportList(publicTransportEntities, allEntities) {
 }
 
 export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy, showWeather, showSummaryViews, showRoomViews, showSearchCard, hasSearchCardDeps, summariesColumns, alarmEntity, alarmEntities, favoriteEntities, roomPinEntities, allEntities, groupByFloors, showCoversSummary, showBetterThermostat = false, hasBetterThermostatDeps = false, showPublicTransport = false, publicTransportEntities = [] }) {
+  // Debug logging
+  console.log('renderEditorHTML called with:', {
+    showBetterThermostat,
+    hasBetterThermostatDeps,
+    showPublicTransport,
+    publicTransportEntitiesCount: publicTransportEntities?.length || 0
+  });
+  
   return `
     <div class="card-config">
       <div class="section">

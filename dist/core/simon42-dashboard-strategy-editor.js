@@ -119,6 +119,14 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
       hasBetterThermostatDeps = false;
     }
     
+    // Debug logging
+    console.log('Simon42 Editor - Rendering with config:', {
+      showBetterThermostat,
+      hasBetterThermostatDeps,
+      showPublicTransport,
+      publicTransportEntities: publicTransportEntities.length
+    });
+    
     // Sammle alle Alarm-Control-Panel-Entitäten
     const alarmEntities = Object.keys(this._hass.states)
       .filter(entityId => entityId.startsWith('alarm_control_panel.'))
