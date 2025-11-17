@@ -147,7 +147,11 @@ strategy:
   type: custom:simon42-dashboard
 ```
 
-Nicht vergessen, anschließend den Browser-Cache zu leeren 👍
+**Wichtig:** Nach Updates den Browser-Cache leeren:
+- **Hard Refresh**: `Ctrl+Shift+R` (Windows) oder `Cmd+Shift+R` (Mac)
+- **Chrome DevTools**: F12 → Rechtsklick auf Refresh → "Empty Cache and Hard Reload"
+
+Die aktuelle Version wird in der Browser-Konsole angezeigt. Prüfe `window.Simon42DashboardVersion` für Details.
 
 ## 🤖 Projekt-Kontext für KI-Assistenten
 
