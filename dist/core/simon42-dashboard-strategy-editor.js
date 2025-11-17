@@ -3,6 +3,7 @@
 // ====================================================================
 import { getEditorStyles } from './editor/simon42-editor-styles.js';
 import { renderEditorHTML } from './editor/simon42-editor-template.js';
+import { VERSION } from '../utils/simon42-version.js';
 import { 
   attachWeatherCheckboxListener,
   attachEnergyCheckboxListener,
@@ -119,8 +120,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
       hasBetterThermostatDeps = false;
     }
     
-    // Debug logging
-    console.log('Simon42 Editor - Rendering with config:', {
+    // Debug logging mit Version
+    console.log(`[Simon42 Editor v${VERSION}] Rendering with config:`, {
       showBetterThermostat,
       hasBetterThermostatDeps,
       showPublicTransport,
