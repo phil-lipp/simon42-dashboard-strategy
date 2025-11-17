@@ -149,15 +149,10 @@ export function createOverviewSection(data) {
       icon: "mdi:bus"
     });
     
-    // Erstelle eine Card für jede Public Transport Entity
-    publicTransportEntities.forEach(entityId => {
-      cards.push({
-        type: "custom:hvv-card",
-        entity: entityId,
-        grid_options: {
-          columns: publicTransportEntities.length > 1 ? "half" : "full"
-        }
-      });
+    // Erstelle eine hvv-card mit allen Entities als Array
+    cards.push({
+      type: "custom:hvv-card",
+      entities: publicTransportEntities
     });
   }
 
