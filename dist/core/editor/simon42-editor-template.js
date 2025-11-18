@@ -190,7 +190,30 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
           <select id="public-transport-entity-select" style="flex: 1; min-width: 0; padding: 8px; border-radius: 4px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color);">
             <option value="">Entität auswählen...</option>
             ${allEntities
-              .filter(entity => entity.entity_id.startsWith('sensor.') || entity.entity_id.startsWith('button.'))
+              .filter(entity => {
+                const entityId = entity.entity_id.toLowerCase();
+                const name = (entity.name || '').toLowerCase();
+                
+                // Filter für relevante Domains
+                if (!entityId.startsWith('sensor.') && !entityId.startsWith('button.')) {
+                  return false;
+                }
+                
+                // Filter für relevante Keywords in Entity-ID oder Name
+                const transportKeywords = [
+                  'departure', 'departures', 'abfahrt', 'abfahrten',
+                  'hvv', 'public_transport', 'public-transport', 'publictransport',
+                  'transport', 'verkehr', 'nahverkehr',
+                  'bus', 'bahn', 'train', 'u-bahn', 'ubahn', 's-bahn', 'sbahn',
+                  'station', 'haltestelle', 'stop'
+                ];
+                
+                const hasTransportKeyword = transportKeywords.some(keyword => 
+                  entityId.includes(keyword) || name.includes(keyword)
+                );
+                
+                return hasTransportKeyword;
+              })
               .map(entity => `
                 <option value="${entity.entity_id}">${entity.name}</option>
               `).join('')}
