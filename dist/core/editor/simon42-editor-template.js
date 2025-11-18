@@ -31,7 +31,7 @@ function renderPublicTransportList(publicTransportEntities, allEntities) {
   `;
 }
 
-export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy, showWeather, showSummaryViews, showRoomViews, showSearchCard, hasSearchCardDeps, summariesColumns, alarmEntity, alarmEntities, favoriteEntities, roomPinEntities, allEntities, groupByFloors, showCoversSummary, showBetterThermostat = false, hasBetterThermostatDeps = false, showPublicTransport = false, publicTransportEntities = [], hvvMax = 10, hvvShowTime = true, hvvShowTitle = true, hvvShowName = false, hvvTitle = 'HVV' }) {
+export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy, showWeather, showSummaryViews, showRoomViews, showSearchCard, hasSearchCardDeps, summariesColumns, alarmEntity, alarmEntities, favoriteEntities, roomPinEntities, allEntities, groupByFloors, showCoversSummary, showBetterThermostat = false, hasBetterThermostatDeps = false, showPublicTransport = false, publicTransportEntities = [], hvvMax = 10, hvvShowTime = true, hvvShowTitle = true, hvvTitle = 'HVV' }) {
   // Debug logging
   console.log('renderEditorHTML called with:', {
     showBetterThermostat,
@@ -200,7 +200,7 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
           </button>
         </div>
         <div class="description">
-          Wählen Sie eine oder mehrere Entitäten aus, die Abfahrtszeiten bereitstellen. Diese werden in der Übersicht angezeigt.
+          Wähle eine oder mehrere Entitäten aus, die Abfahrtszeiten bereitstellen. Diese werden in der Übersicht angezeigt.
         </div>
         <div style="margin-top: 16px;">
           <div class="form-row">
@@ -229,14 +229,6 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
               ${hvvShowTitle !== false ? 'checked' : ''}
             />
             <label for="hvv-show-title">Titel anzeigen</label>
-          </div>
-          <div class="form-row">
-            <input 
-              type="checkbox" 
-              id="hvv-show-name" 
-              ${hvvShowName === true ? 'checked' : ''}
-            />
-            <label for="hvv-show-name">Name anzeigen</label>
           </div>
           <div class="form-row">
             <label for="hvv-title" style="margin-right: 8px; min-width: 120px;">Titel:</label>

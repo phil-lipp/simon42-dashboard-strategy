@@ -150,27 +150,15 @@ export function createOverviewSection(data) {
     });
     
     // Erstelle eine hvv-card mit allen Entities als Array und konfigurierten Optionen
+    // Verwende Config-Werte wenn vorhanden, sonst Defaults
     const hvvCard = {
       type: "custom:hvv-card",
-      entities: publicTransportEntities
+      entities: publicTransportEntities,
+      max: config.hvv_max !== undefined ? config.hvv_max : 10,
+      show_time: config.hvv_show_time !== undefined ? config.hvv_show_time : true,
+      show_title: config.hvv_show_title !== undefined ? config.hvv_show_title : true,
+      title: config.hvv_title || 'HVV'
     };
-
-    // Füge optionale Einstellungen hinzu
-    if (config.hvv_max !== undefined) {
-      hvvCard.max = config.hvv_max;
-    }
-    if (config.hvv_show_time === false) {
-      hvvCard.show_time = false;
-    }
-    if (config.hvv_show_title === false) {
-      hvvCard.show_title = false;
-    }
-    if (config.hvv_show_name === true) {
-      hvvCard.show_name = true;
-    }
-    if (config.hvv_title && config.hvv_title !== 'HVV') {
-      hvvCard.title = config.hvv_title;
-    }
 
     cards.push(hvvCard);
   }

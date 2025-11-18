@@ -110,7 +110,6 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     const hvvMax = this._config.hvv_max !== undefined ? this._config.hvv_max : 10;
     const hvvShowTime = this._config.hvv_show_time !== false;
     const hvvShowTitle = this._config.hvv_show_title !== false;
-    const hvvShowName = this._config.hvv_show_name === true;
     const hvvTitle = this._config.hvv_title || 'HVV';
     const summariesColumns = this._config.summaries_columns || 2;
     const alarmEntity = this._config.alarm_entity || '';
@@ -182,7 +181,6 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
         hvvMax,
         hvvShowTime,
         hvvShowTitle,
-        hvvShowName,
         hvvTitle
       });
       
@@ -1177,14 +1175,6 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
       });
     }
 
-    // Show name checkbox
-    const showNameCheckbox = this.querySelector('#hvv-show-name');
-    if (showNameCheckbox) {
-      showNameCheckbox.addEventListener('change', (e) => {
-        this._hvvShowNameChanged(e.target.checked);
-      });
-    }
-
     // Title input
     const titleInput = this.querySelector('#hvv-title');
     if (titleInput) {
@@ -1245,25 +1235,6 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     // Wenn Standardwert (true), entfernen wir die Property
     if (showTitle === true) {
       delete newConfig.hvv_show_title;
-    }
-
-    this._config = newConfig;
-    this._fireConfigChanged(newConfig);
-  }
-
-  _hvvShowNameChanged(showName) {
-    if (!this._config || !this._hass) {
-      return;
-    }
-
-    const newConfig = {
-      ...this._config,
-      hvv_show_name: showName
-    };
-
-    // Wenn Standardwert (false), entfernen wir die Property
-    if (showName === false) {
-      delete newConfig.hvv_show_name;
     }
 
     this._config = newConfig;
