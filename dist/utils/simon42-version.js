@@ -7,7 +7,7 @@
 // WICHTIG: Bei Code-Änderungen die Version erhöhen, damit Browser-Cache
 //          automatisch invalidiert wird!
 
-export const VERSION = '1.0.3-dev';
+export const VERSION = '1.0.3.2-dev';
 export const BUILD_DATE = '2025-01-20'; // YYYY-MM-DD - Aktualisiere bei Release!
 export const BUILD_TIMESTAMP = 1737417600000; // Timestamp - Aktualisiere bei Release!
 
