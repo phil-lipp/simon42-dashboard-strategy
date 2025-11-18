@@ -422,10 +422,15 @@ async function getAreaGroupedEntities(areaId, hass) {
     if (!belongsToArea) continue;
     if (excludeLabels.includes(entity.entity_id)) continue;
     if (!hass.states[entity.entity_id]) continue;
+    // Prüfe explizit auf entity.hidden (wird gesetzt wenn "visible"=off in der UI)
+    if (entity.hidden === true) continue;
     if (entity.hidden_by || entity.disabled_by) continue;
     
     const entityRegistry = hass.entities?.[entity.entity_id];
-    if (entityRegistry && (entityRegistry.hidden_by || entityRegistry.disabled_by)) continue;
+    if (entityRegistry) {
+      if (entityRegistry.hidden === true) continue;
+      if (entityRegistry.hidden_by || entityRegistry.disabled_by) continue;
+    }
     
     const domain = entity.entity_id.split('.')[0];
     const state = hass.states[entity.entity_id];

@@ -107,6 +107,11 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     const showBetterThermostat = this._config.show_better_thermostat === true;
     const showPublicTransport = this._config.show_public_transport === true;
     const publicTransportEntities = this._config.public_transport_entities || [];
+    const hvvMax = this._config.hvv_max !== undefined ? this._config.hvv_max : 10;
+    const hvvShowTime = this._config.hvv_show_time !== false;
+    const hvvShowTitle = this._config.hvv_show_title !== false;
+    const hvvShowName = this._config.hvv_show_name === true;
+    const hvvTitle = this._config.hvv_title || 'HVV';
     const summariesColumns = this._config.summaries_columns || 2;
     const alarmEntity = this._config.alarm_entity || '';
     const favoriteEntities = this._config.favorite_entities || [];
@@ -173,7 +178,12 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
         showBetterThermostat,
         hasBetterThermostatDeps,
         showPublicTransport,
-        publicTransportEntities
+        publicTransportEntities,
+        hvvMax,
+        hvvShowTime,
+        hvvShowTitle,
+        hvvShowName,
+        hvvTitle
       });
       
       this.innerHTML = `
@@ -208,6 +218,7 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     attachCoversSummaryCheckboxListener(this, (showCoversSummary) => this._showCoversSummaryChanged(showCoversSummary));
     attachBetterThermostatCheckboxListener(this, (showBetterThermostat) => this._showBetterThermostatChanged(showBetterThermostat));
     attachPublicTransportCheckboxListener(this, (showPublicTransport) => this._showPublicTransportChanged(showPublicTransport));
+    this._attachHvvCardListeners();
     this._attachSummariesColumnsListener();
     this._attachAlarmEntityListener();
     this._attachFavoritesListeners();
@@ -1136,6 +1147,146 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
         }).join('')}
       </div>
     `;
+  }
+
+  _attachHvvCardListeners() {
+    // Max input
+    const maxInput = this.querySelector('#hvv-max');
+    if (maxInput) {
+      maxInput.addEventListener('change', (e) => {
+        const value = parseInt(e.target.value, 10);
+        if (!isNaN(value) && value >= 1 && value <= 50) {
+          this._hvvMaxChanged(value);
+        }
+      });
+    }
+
+    // Show time checkbox
+    const showTimeCheckbox = this.querySelector('#hvv-show-time');
+    if (showTimeCheckbox) {
+      showTimeCheckbox.addEventListener('change', (e) => {
+        this._hvvShowTimeChanged(e.target.checked);
+      });
+    }
+
+    // Show title checkbox
+    const showTitleCheckbox = this.querySelector('#hvv-show-title');
+    if (showTitleCheckbox) {
+      showTitleCheckbox.addEventListener('change', (e) => {
+        this._hvvShowTitleChanged(e.target.checked);
+      });
+    }
+
+    // Show name checkbox
+    const showNameCheckbox = this.querySelector('#hvv-show-name');
+    if (showNameCheckbox) {
+      showNameCheckbox.addEventListener('change', (e) => {
+        this._hvvShowNameChanged(e.target.checked);
+      });
+    }
+
+    // Title input
+    const titleInput = this.querySelector('#hvv-title');
+    if (titleInput) {
+      titleInput.addEventListener('change', (e) => {
+        this._hvvTitleChanged(e.target.value);
+      });
+    }
+  }
+
+  _hvvMaxChanged(max) {
+    if (!this._config || !this._hass) {
+      return;
+    }
+
+    const newConfig = {
+      ...this._config,
+      hvv_max: max
+    };
+
+    // Wenn Standardwert (10), entfernen wir die Property
+    if (max === 10) {
+      delete newConfig.hvv_max;
+    }
+
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  _hvvShowTimeChanged(showTime) {
+    if (!this._config || !this._hass) {
+      return;
+    }
+
+    const newConfig = {
+      ...this._config,
+      hvv_show_time: showTime
+    };
+
+    // Wenn Standardwert (true), entfernen wir die Property
+    if (showTime === true) {
+      delete newConfig.hvv_show_time;
+    }
+
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  _hvvShowTitleChanged(showTitle) {
+    if (!this._config || !this._hass) {
+      return;
+    }
+
+    const newConfig = {
+      ...this._config,
+      hvv_show_title: showTitle
+    };
+
+    // Wenn Standardwert (true), entfernen wir die Property
+    if (showTitle === true) {
+      delete newConfig.hvv_show_title;
+    }
+
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  _hvvShowNameChanged(showName) {
+    if (!this._config || !this._hass) {
+      return;
+    }
+
+    const newConfig = {
+      ...this._config,
+      hvv_show_name: showName
+    };
+
+    // Wenn Standardwert (false), entfernen wir die Property
+    if (showName === false) {
+      delete newConfig.hvv_show_name;
+    }
+
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  _hvvTitleChanged(title) {
+    if (!this._config || !this._hass) {
+      return;
+    }
+
+    const newConfig = {
+      ...this._config,
+      hvv_title: title
+    };
+
+    // Wenn Standardwert ('HVV'), entfernen wir die Property
+    if (!title || title === 'HVV') {
+      delete newConfig.hvv_title;
+    }
+
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
   }
 
   _fireConfigChanged(config) {

@@ -149,11 +149,30 @@ export function createOverviewSection(data) {
       icon: "mdi:bus"
     });
     
-    // Erstelle eine hvv-card mit allen Entities als Array
-    cards.push({
+    // Erstelle eine hvv-card mit allen Entities als Array und konfigurierten Optionen
+    const hvvCard = {
       type: "custom:hvv-card",
       entities: publicTransportEntities
-    });
+    };
+
+    // Füge optionale Einstellungen hinzu
+    if (config.hvv_max !== undefined) {
+      hvvCard.max = config.hvv_max;
+    }
+    if (config.hvv_show_time === false) {
+      hvvCard.show_time = false;
+    }
+    if (config.hvv_show_title === false) {
+      hvvCard.show_title = false;
+    }
+    if (config.hvv_show_name === true) {
+      hvvCard.show_name = true;
+    }
+    if (config.hvv_title && config.hvv_title !== 'HVV') {
+      hvvCard.title = config.hvv_title;
+    }
+
+    cards.push(hvvCard);
   }
 
   return {

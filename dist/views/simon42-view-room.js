@@ -180,6 +180,11 @@ class Simon42ViewRoomStrategy {
       }
       
       if (domain === 'climate') {
+        // Zusätzliche Prüfung für Klima-Entitäten: Respektiere explizit entity.hidden
+        // Dies stellt sicher, dass Thermostate mit "visible"=off nicht angezeigt werden
+        if (entity.hidden === true) {
+          continue;
+        }
         roomEntities.climate.push(entityId);
         continue;
       }

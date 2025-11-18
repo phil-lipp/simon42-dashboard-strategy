@@ -31,7 +31,7 @@ function renderPublicTransportList(publicTransportEntities, allEntities) {
   `;
 }
 
-export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy, showWeather, showSummaryViews, showRoomViews, showSearchCard, hasSearchCardDeps, summariesColumns, alarmEntity, alarmEntities, favoriteEntities, roomPinEntities, allEntities, groupByFloors, showCoversSummary, showBetterThermostat = false, hasBetterThermostatDeps = false, showPublicTransport = false, publicTransportEntities = [] }) {
+export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy, showWeather, showSummaryViews, showRoomViews, showSearchCard, hasSearchCardDeps, summariesColumns, alarmEntity, alarmEntities, favoriteEntities, roomPinEntities, allEntities, groupByFloors, showCoversSummary, showBetterThermostat = false, hasBetterThermostatDeps = false, showPublicTransport = false, publicTransportEntities = [], hvvMax = 10, hvvShowTime = true, hvvShowTitle = true, hvvShowName = false, hvvTitle = 'HVV' }) {
   // Debug logging
   console.log('renderEditorHTML called with:', {
     showBetterThermostat,
@@ -201,6 +201,53 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
         </div>
         <div class="description">
           Wählen Sie eine oder mehrere Entitäten aus, die Abfahrtszeiten bereitstellen. Diese werden in der Übersicht angezeigt.
+        </div>
+        <div style="margin-top: 16px;">
+          <div class="form-row">
+            <label for="hvv-max" style="margin-right: 8px; min-width: 120px;">Max. Abfahrten:</label>
+            <input 
+              type="number" 
+              id="hvv-max" 
+              value="${hvvMax !== undefined ? hvvMax : 10}" 
+              min="1" 
+              max="50"
+              style="flex: 1; padding: 8px; border-radius: 4px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color);"
+            />
+          </div>
+          <div class="form-row">
+            <input 
+              type="checkbox" 
+              id="hvv-show-time" 
+              ${hvvShowTime !== false ? 'checked' : ''}
+            />
+            <label for="hvv-show-time">Zeit anzeigen</label>
+          </div>
+          <div class="form-row">
+            <input 
+              type="checkbox" 
+              id="hvv-show-title" 
+              ${hvvShowTitle !== false ? 'checked' : ''}
+            />
+            <label for="hvv-show-title">Titel anzeigen</label>
+          </div>
+          <div class="form-row">
+            <input 
+              type="checkbox" 
+              id="hvv-show-name" 
+              ${hvvShowName === true ? 'checked' : ''}
+            />
+            <label for="hvv-show-name">Name anzeigen</label>
+          </div>
+          <div class="form-row">
+            <label for="hvv-title" style="margin-right: 8px; min-width: 120px;">Titel:</label>
+            <input 
+              type="text" 
+              id="hvv-title" 
+              value="${hvvTitle || 'HVV'}" 
+              placeholder="HVV"
+              style="flex: 1; padding: 8px; border-radius: 4px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color);"
+            />
+          </div>
         </div>
       </div>
 
