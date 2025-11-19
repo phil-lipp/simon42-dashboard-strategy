@@ -106,20 +106,54 @@ export function resolveModule(modulePath, baseUrl = null) {
     return modulePath;
   }
 
-  // Check if path already has hacstag
-  try {
-    const testUrl = new URL(modulePath, 'http://example.com');
-    if (testUrl.searchParams.has('hacstag')) {
-      return modulePath; // Already has hacstag
-    }
-  } catch (e) {
-    // Not a valid URL format, continue
+  // Check if path already has hacstag by checking the string directly
+  if (modulePath.includes('hacstag=')) {
+    return modulePath; // Already has hacstag
   }
 
-  // Simple approach: just append hacstag to the relative path
-  // This preserves the ./ prefix and works with ES module imports
-  const separator = modulePath.includes('?') ? '&' : '?';
-  return `${modulePath}${separator}hacstag=${hacstag}`;
+  // Use import.meta.url to properly resolve relative paths
+  // This ensures the path is correctly resolved relative to the current module
+  if (typeof import.meta !== 'undefined' && import.meta.url) {
+    try {
+      const base = baseUrl || import.meta.url;
+      const resolvedUrl = new URL(modulePath, base);
+      
+      // Append hacstag
+      resolvedUrl.searchParams.set('hacstag', hacstag);
+      
+      // Convert back to relative path if same origin
+      const baseUrlObj = new URL(base);
+      if (resolvedUrl.origin === baseUrlObj.origin) {
+        // Calculate relative path from base to resolved
+        const basePath = baseUrlObj.pathname.substring(0, baseUrlObj.pathname.lastIndexOf('/') + 1);
+        const resolvedPath = resolvedUrl.pathname;
+        
+        if (resolvedPath.startsWith(basePath)) {
+          const relativePath = resolvedPath.substring(basePath.length);
+          // Ensure it starts with ./ for proper ES module resolution
+          const finalPath = relativePath.startsWith('./') || relativePath.startsWith('../') 
+            ? relativePath 
+            : './' + relativePath;
+          return finalPath + resolvedUrl.search;
+        }
+      }
+      
+      // If we can't make it relative, return the full URL
+      return resolvedUrl.href;
+    } catch (e) {
+      // If URL resolution fails, fall back to simple string append
+    }
+  }
+
+  // Fallback: Ensure relative paths start with ./ and append hacstag
+  let normalizedPath = modulePath;
+  if (!modulePath.startsWith('./') && !modulePath.startsWith('../') && 
+      !modulePath.startsWith('/') && !modulePath.match(/^https?:\/\//)) {
+    normalizedPath = './' + modulePath;
+  }
+
+  const separator = normalizedPath.includes('?') ? '&' : '?';
+  return `${normalizedPath}${separator}hacstag=${hacstag}`;
 }
 
 /**
