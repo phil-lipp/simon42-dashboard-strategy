@@ -21,27 +21,14 @@ function getHacstag() {
 
   hacstagDetectionAttempted = true;
 
-  // First, try to get from import.meta.url (most reliable for ES modules)
-  if (typeof import.meta !== 'undefined' && import.meta.url) {
-    try {
-      const url = new URL(import.meta.url);
-      const hacstag = url.searchParams.get('hacstag');
-      if (hacstag) {
-        cachedHacstag = hacstag;
-        return hacstag;
-      }
-    } catch (e) {
-      // URL parsing failed, continue
-    }
-  }
-
-  // Try to get hacstag from script elements in the DOM
-  // This is important because HACS adds hacstag to the entry point script tag
+  // Priority 1: Try to get hacstag from script elements in the DOM
+  // This is the most reliable because HACS adds hacstag to the entry point script tag
+  // and this works even if modules are loaded via static imports
   if (typeof document !== 'undefined') {
     // Check all script tags, prioritizing the entry point
     const scripts = Array.from(document.querySelectorAll('script[type="module"]'));
     
-    // First, look for the entry point script
+    // First, look for the entry point script (HACS adds hacstag here)
     for (const script of scripts) {
       const src = script.src || script.getAttribute('src');
       if (src && src.includes('simon42-dashboard-strategy.js')) {
@@ -50,6 +37,9 @@ function getHacstag() {
           const hacstag = url.searchParams.get('hacstag');
           if (hacstag) {
             cachedHacstag = hacstag;
+            if (typeof console !== 'undefined' && console.debug) {
+              console.debug(`[Simon42 Module Loader] Detected hacstag from entry point: ${hacstag}`);
+            }
             return hacstag;
           }
         } catch (e) {
@@ -67,6 +57,9 @@ function getHacstag() {
           const hacstag = url.searchParams.get('hacstag');
           if (hacstag) {
             cachedHacstag = hacstag;
+            if (typeof console !== 'undefined' && console.debug) {
+              console.debug(`[Simon42 Module Loader] Detected hacstag from loader: ${hacstag}`);
+            }
             return hacstag;
           }
         } catch (e) {
@@ -76,7 +69,24 @@ function getHacstag() {
     }
   }
 
-  // Try to get from the current page URL as a last resort
+  // Priority 2: Try to get from import.meta.url (works if module was loaded with hacstag)
+  if (typeof import.meta !== 'undefined' && import.meta.url) {
+    try {
+      const url = new URL(import.meta.url);
+      const hacstag = url.searchParams.get('hacstag');
+      if (hacstag) {
+        cachedHacstag = hacstag;
+        if (typeof console !== 'undefined' && console.debug) {
+          console.debug(`[Simon42 Module Loader] Detected hacstag from import.meta.url: ${hacstag}`);
+        }
+        return hacstag;
+      }
+    } catch (e) {
+      // URL parsing failed, continue
+    }
+  }
+
+  // Priority 3: Try to get from the current page URL as a last resort
   if (typeof window !== 'undefined' && window.location) {
     try {
       const hacstag = new URL(window.location.href).searchParams.get('hacstag');
@@ -87,6 +97,10 @@ function getHacstag() {
     } catch (e) {
       // URL parsing failed
     }
+  }
+
+  if (typeof console !== 'undefined' && console.debug) {
+    console.debug('[Simon42 Module Loader] No hacstag detected - cache busting disabled');
   }
 
   return null;
@@ -111,26 +125,45 @@ export function resolveModule(modulePath, baseUrl = null) {
     return modulePath; // Already has hacstag
   }
 
-  // Ensure the path starts with ./ for relative imports (required by ES modules)
-  // This is critical - ES module imports MUST start with ./ or ../ or be absolute
-  let normalizedPath = modulePath;
-  if (!modulePath.startsWith('./') && !modulePath.startsWith('../') && 
-      !modulePath.startsWith('/') && !modulePath.match(/^https?:\/\//)) {
-    normalizedPath = './' + modulePath;
+  // Always use import.meta.url to resolve to absolute URL, then append hacstag
+  // This is the most reliable approach for ES module imports with query parameters
+  // Based on how other HACS integrations handle this
+  if (typeof import.meta !== 'undefined' && import.meta.url) {
+    try {
+      const base = baseUrl || import.meta.url;
+      const resolvedUrl = new URL(modulePath, base);
+      
+      // Append hacstag
+      resolvedUrl.searchParams.set('hacstag', hacstag);
+      
+      // Debug logging
+      if (typeof console !== 'undefined' && console.debug) {
+        console.debug(`[Simon42 Module Loader] Resolving: ${modulePath} (base: ${base}) -> ${resolvedUrl.href}`);
+      }
+      
+      // Return the full absolute URL - dynamic import() accepts absolute URLs
+      // This is the key: absolute URLs work reliably, relative paths with query params can be problematic
+      return resolvedUrl.href;
+    } catch (e) {
+      // If URL resolution fails, this is a critical error
+      console.error('[Simon42 Module Loader] Failed to resolve module URL:', modulePath, 'Error:', e);
+      // Still try to return something usable
+      const separator = modulePath.includes('?') ? '&' : '?';
+      const fallback = modulePath.startsWith('./') ? modulePath : './' + modulePath;
+      const fallbackResult = `${fallback}${separator}hacstag=${hacstag}`;
+      console.warn('[Simon42 Module Loader] Using fallback:', fallbackResult);
+      return fallbackResult;
+    }
   }
 
-  // Simple and reliable: just append hacstag to the normalized path
-  // The browser will resolve relative paths correctly, and query parameters
-  // are preserved. This is the same approach used by other HACS integrations.
-  const separator = normalizedPath.includes('?') ? '&' : '?';
-  const resolved = `${normalizedPath}${separator}hacstag=${hacstag}`;
-  
-  // Debug logging (remove in production if needed)
-  if (typeof console !== 'undefined' && console.debug) {
-    console.debug(`[Simon42 Module Loader] Resolved: ${modulePath} -> ${resolved}`);
-  }
-  
-  return resolved;
+  // Fallback if import.meta.url is not available (shouldn't happen in ES modules)
+  console.warn('[Simon42 Module Loader] import.meta.url not available, using fallback');
+  const separator = modulePath.includes('?') ? '&' : '?';
+  const normalizedPath = modulePath.startsWith('./') || modulePath.startsWith('../') || 
+                          modulePath.startsWith('/') || modulePath.match(/^https?:\/\//)
+    ? modulePath 
+    : './' + modulePath;
+  return `${normalizedPath}${separator}hacstag=${hacstag}`;
 }
 
 /**
