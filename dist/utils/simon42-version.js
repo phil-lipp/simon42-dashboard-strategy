@@ -8,7 +8,7 @@
 //          hacstag Parameter gehandhabt. Diese Version dient primär
 //          für Logging, Debugging und Benutzer-Informationen.
 
-export const VERSION = '1.0.3.19-dev';
+export const VERSION = '1.0.3.20-dev';
 export const BUILD_DATE = '2025-11-19'; // YYYY-MM-DD - Aktualisiere bei Release!
 
 // Exportiere Version-Info für Debugging (wird nach dem Laden gesetzt)
