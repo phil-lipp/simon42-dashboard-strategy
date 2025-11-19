@@ -111,49 +111,26 @@ export function resolveModule(modulePath, baseUrl = null) {
     return modulePath; // Already has hacstag
   }
 
-  // Use import.meta.url to properly resolve relative paths
-  // This ensures the path is correctly resolved relative to the current module
-  if (typeof import.meta !== 'undefined' && import.meta.url) {
-    try {
-      const base = baseUrl || import.meta.url;
-      const resolvedUrl = new URL(modulePath, base);
-      
-      // Append hacstag
-      resolvedUrl.searchParams.set('hacstag', hacstag);
-      
-      // Convert back to relative path if same origin
-      const baseUrlObj = new URL(base);
-      if (resolvedUrl.origin === baseUrlObj.origin) {
-        // Calculate relative path from base to resolved
-        const basePath = baseUrlObj.pathname.substring(0, baseUrlObj.pathname.lastIndexOf('/') + 1);
-        const resolvedPath = resolvedUrl.pathname;
-        
-        if (resolvedPath.startsWith(basePath)) {
-          const relativePath = resolvedPath.substring(basePath.length);
-          // Ensure it starts with ./ for proper ES module resolution
-          const finalPath = relativePath.startsWith('./') || relativePath.startsWith('../') 
-            ? relativePath 
-            : './' + relativePath;
-          return finalPath + resolvedUrl.search;
-        }
-      }
-      
-      // If we can't make it relative, return the full URL
-      return resolvedUrl.href;
-    } catch (e) {
-      // If URL resolution fails, fall back to simple string append
-    }
-  }
-
-  // Fallback: Ensure relative paths start with ./ and append hacstag
+  // Ensure the path starts with ./ for relative imports (required by ES modules)
+  // This is critical - ES module imports MUST start with ./ or ../ or be absolute
   let normalizedPath = modulePath;
   if (!modulePath.startsWith('./') && !modulePath.startsWith('../') && 
       !modulePath.startsWith('/') && !modulePath.match(/^https?:\/\//)) {
     normalizedPath = './' + modulePath;
   }
 
+  // Simple and reliable: just append hacstag to the normalized path
+  // The browser will resolve relative paths correctly, and query parameters
+  // are preserved. This is the same approach used by other HACS integrations.
   const separator = normalizedPath.includes('?') ? '&' : '?';
-  return `${normalizedPath}${separator}hacstag=${hacstag}`;
+  const resolved = `${normalizedPath}${separator}hacstag=${hacstag}`;
+  
+  // Debug logging (remove in production if needed)
+  if (typeof console !== 'undefined' && console.debug) {
+    console.debug(`[Simon42 Module Loader] Resolved: ${modulePath} -> ${resolved}`);
+  }
+  
+  return resolved;
 }
 
 /**
