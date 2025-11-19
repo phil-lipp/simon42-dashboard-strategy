@@ -106,49 +106,20 @@ export function resolveModule(modulePath, baseUrl = null) {
     return modulePath;
   }
 
+  // Check if path already has hacstag
   try {
-    // Resolve the module path relative to the base URL
-    // Use import.meta.url as base if available, otherwise fall back to window.location
-    const base = baseUrl || (typeof import.meta !== 'undefined' && import.meta.url 
-      ? import.meta.url 
-      : (typeof window !== 'undefined' ? window.location.href : ''));
-    
-    const resolvedUrl = new URL(modulePath, base);
-    
-    // Append hacstag if not already present
-    if (!resolvedUrl.searchParams.has('hacstag')) {
-      resolvedUrl.searchParams.set('hacstag', hacstag);
+    const testUrl = new URL(modulePath, 'http://example.com');
+    if (testUrl.searchParams.has('hacstag')) {
+      return modulePath; // Already has hacstag
     }
-    
-    // For ES modules, we want to return a relative path if possible
-    // This ensures the browser handles the import correctly
-    if (typeof import.meta !== 'undefined' && import.meta.url && !baseUrl) {
-      try {
-        const baseUrlObj = new URL(import.meta.url);
-        // If same origin, return relative path with query string
-        if (resolvedUrl.origin === baseUrlObj.origin) {
-          // Calculate relative path
-          const basePath = baseUrlObj.pathname.substring(0, baseUrlObj.pathname.lastIndexOf('/') + 1);
-          const resolvedPath = resolvedUrl.pathname;
-          
-          // If paths are related, return relative path
-          if (resolvedPath.startsWith(basePath)) {
-            const relativePath = resolvedPath.substring(basePath.length);
-            return relativePath + resolvedUrl.search;
-          }
-        }
-      } catch (e) {
-        // Fall through to return full URL or manual append
-      }
-    }
-    
-    // Return full URL if relative path calculation failed
-    return resolvedUrl.href;
   } catch (e) {
-    // If URL resolution fails, append hacstag manually to the relative path
-    const separator = modulePath.includes('?') ? '&' : '?';
-    return `${modulePath}${separator}hacstag=${hacstag}`;
+    // Not a valid URL format, continue
   }
+
+  // Simple approach: just append hacstag to the relative path
+  // This preserves the ./ prefix and works with ES module imports
+  const separator = modulePath.includes('?') ? '&' : '?';
+  return `${modulePath}${separator}hacstag=${hacstag}`;
 }
 
 /**
