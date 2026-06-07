@@ -37,6 +37,8 @@ export interface Simon42StrategyConfig {
   show_security_summary?: boolean; // default: true
   show_battery_summary?: boolean; // default: true
   show_climate_summary?: boolean; // default: false
+  use_better_thermostat_ui_card?: boolean; // default: false
+  better_thermostat_card_variant?: 'normal' | 'mini'; // default: 'normal'
   hide_mobile_app_batteries?: boolean; // default: false
   battery_critical_threshold?: number; // default: 20
   battery_low_threshold?: number; // default: 50

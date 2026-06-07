@@ -6,11 +6,13 @@ import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceViewConfig, LovelaceSectionConfig } from '../types/lovelace';
 import { Registry } from '../Registry';
 import { localize } from '../utils/localize';
+import { buildClimateCard } from '../utils/climate-card-builder';
 
 class Simon42ViewClimateStrategy extends HTMLElement {
   static async generate(config: any, hass: HomeAssistant): Promise<LovelaceViewConfig> {
     // Ensure Registry is initialized (idempotent — no-op if already done)
-    Registry.initialize(hass, config.config || {});
+    const strategyConfig = config.config || {};
+    Registry.initialize(hass, strategyConfig);
 
     const climateIds = Registry.getVisibleEntityIdsForDomain('climate').filter(
       (id) => hass.states[id] !== undefined
@@ -56,14 +58,7 @@ class Simon42ViewClimateStrategy extends HTMLElement {
             heading_style: 'title',
             icon,
           },
-          ...entities.map((e) => ({
-            type: 'tile',
-            entity: e,
-            vertical: false,
-            features: [{ type: 'climate-hvac-modes' }],
-            features_position: 'inline',
-            state_content: ['hvac_action', 'current_temperature'],
-          })),
+          ...entities.map((e) => buildClimateCard(e, strategyConfig)),
         ],
       });
     };

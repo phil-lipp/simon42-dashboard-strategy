@@ -16,6 +16,7 @@ import { Registry } from '../Registry';
 import { timeStart, timeEnd, debugLog } from '../utils/debug';
 import { localize } from '../utils/localize';
 import { BADGE_COLOR_MAP, getColorForEntity, isDefaultShowName, resolveShowName } from '../utils/badge-utils';
+import { buildClimateCard } from '../utils/climate-card-builder';
 
 // HA supported_features bitmask values
 const FAN_SET_SPEED = 1;
@@ -473,15 +474,9 @@ class Simon42ViewRoomStrategy extends HTMLElement {
       state_content: 'last_changed',
     }));
 
-    domainSection(roomEntities.climate, localize('room.climate'), 'mdi:thermostat', (e) => ({
-      type: 'tile',
-      entity: e,
-      name: stripAreaName(e, area, hass),
-      features: [{ type: 'climate-hvac-modes' }],
-      features_position: 'inline',
-      vertical: false,
-      state_content: ['hvac_action', 'current_temperature'],
-    }));
+    domainSection(roomEntities.climate, localize('room.climate'), 'mdi:thermostat', (e) =>
+      buildClimateCard(e, dashboardConfig, { name: stripAreaName(e, area, hass) })
+    );
 
     domainSection(roomEntities.covers, localize('room.covers'), 'mdi:window-shutter', (e) => ({
       type: 'tile',

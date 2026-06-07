@@ -22,6 +22,10 @@ import { DEFAULT_SECTIONS_ORDER } from '../types/strategy';
 import type { AreaRegistryEntry, EntityRegistryEntry } from '../types/registries';
 import { localize } from '../utils/localize';
 import { isBadgeCandidate, isDefaultShowName, resolveShowName } from '../utils/badge-utils';
+import {
+  getBetterThermostatCardVariant,
+  isBetterThermostatCardAvailable,
+} from '../utils/climate-card-builder';
 
 // -- Supporting types for the editor ------------------------------------
 
@@ -109,6 +113,10 @@ class Simon42DashboardStrategyEditor extends LitElement {
     const hasSearchCard = customElements.get('search-card') !== undefined;
     const hasCardTools = customElements.get('card-tools') !== undefined;
     return hasSearchCard && hasCardTools;
+  }
+
+  private _checkBetterThermostatCardDependencies(variant: 'normal' | 'mini'): boolean {
+    return isBetterThermostatCardAvailable(variant);
   }
 
   // -- Entity helpers ---------------------------------------------------
@@ -1025,6 +1033,7 @@ class Simon42DashboardStrategyEditor extends LitElement {
         </div>
 
         ${this._renderSectionOrderPanel()}
+        ${this._renderBetterThermostatSection()}
         ${this._renderCustomCardsSection()}
         ${this._renderCustomBadgesSection()}
         ${this._renderCustomViewsSection()}
@@ -1133,6 +1142,47 @@ class Simon42DashboardStrategyEditor extends LitElement {
               ` : nothing}
             `;
           })}
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderBetterThermostatSection(): TemplateResult {
+    const useBetterThermostatCard = this._config.use_better_thermostat_ui_card === true;
+    const variant = getBetterThermostatCardVariant(this._config);
+    const hasBetterThermostatCardDeps = this._checkBetterThermostatCardDependencies(variant);
+
+    return html`
+      <div class="section">
+        <div class="section-title">${localize('editor.section_better_thermostat')}</div>
+
+        ${this._renderCheckbox(
+          'use-better-thermostat-ui-card',
+          localize('editor.use_better_thermostat_ui_card'),
+          useBetterThermostatCard,
+          (checked) => this._toggleChanged('use_better_thermostat_ui_card', checked, false),
+          !hasBetterThermostatCardDeps
+        )}
+        <div class="description">
+          ${hasBetterThermostatCardDeps
+            ? localize('editor.use_better_thermostat_ui_card_desc')
+            : html`<span>&#x26A0;&#xFE0F; ${unsafeHTML(localize('editor.use_better_thermostat_ui_card_missing'))}</span>`}
+        </div>
+
+        <div style="margin-left: 26px; margin-bottom: 8px;">
+          <div class="form-row">
+            <input type="radio" id="better-thermostat-variant-normal" name="better-thermostat-variant" value="normal"
+              ?checked=${variant === 'normal'}
+              @change=${() => this._betterThermostatVariantChanged('normal')} />
+            <label for="better-thermostat-variant-normal">${localize('editor.better_thermostat_variant_normal')}</label>
+          </div>
+          <div class="form-row">
+            <input type="radio" id="better-thermostat-variant-mini" name="better-thermostat-variant" value="mini"
+              ?checked=${variant === 'mini'}
+              @change=${() => this._betterThermostatVariantChanged('mini')} />
+            <label for="better-thermostat-variant-mini">${localize('editor.better_thermostat_variant_mini')}</label>
+          </div>
+          <div class="description">${localize('editor.better_thermostat_variant_desc')}</div>
         </div>
       </div>
     `;
@@ -2167,6 +2217,22 @@ class Simon42DashboardStrategyEditor extends LitElement {
 
     if (columns === 2) {
       delete newConfig.summaries_columns;
+    }
+
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  private _betterThermostatVariantChanged(variant: 'normal' | 'mini'): void {
+    if (!this._hass) return;
+
+    const newConfig: Simon42StrategyConfig = {
+      ...this._config,
+      better_thermostat_card_variant: variant,
+    };
+
+    if (variant === 'normal') {
+      delete newConfig.better_thermostat_card_variant;
     }
 
     this._config = newConfig;

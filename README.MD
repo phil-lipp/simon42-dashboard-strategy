@@ -315,6 +315,8 @@ Entitäten können auf mehreren Ebenen gefiltert werden:
 | `show_covers_summary` | boolean | `true` | Rollo-Zusammenfassung |
 | `show_security_summary` | boolean | `true` | Sicherheits-Zusammenfassung |
 | `show_climate_summary` | boolean | `false` | Klima-Zusammenfassung |
+| `use_better_thermostat_ui_card` | boolean | `false` | Better Thermostat UI Card statt Kacheln |
+| `better_thermostat_card_variant` | `normal` \| `mini` | `normal` | Layout der Better Thermostat UI Card |
 | `show_battery_summary` | boolean | `true` | Batterie-Zusammenfassung |
 | `summaries_columns` | 2 \| 4 | `2` | Spalten-Layout der Zusammenfassungen |
 | `hide_mobile_app_batteries` | boolean | `false` | Mobile-App-Batterien ausblenden |
