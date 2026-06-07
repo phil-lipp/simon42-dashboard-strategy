@@ -1,4 +1,4 @@
-import type { LovelaceCardConfig } from '../types/lovelace';
+import type { LovelaceCardConfig, LovelaceGridOptions } from '../types/lovelace';
 import type { Simon42StrategyConfig } from '../types/strategy';
 
 export type BetterThermostatCardVariant = 'normal' | 'mini';
@@ -11,6 +11,12 @@ const BT_CARD_TYPES: Record<BetterThermostatCardVariant, string> = {
 const BT_CUSTOM_ELEMENTS: Record<BetterThermostatCardVariant, string> = {
   normal: 'better-thermostat-normal-climate-card',
   mini: 'better-thermostat-mini-climate-card',
+};
+
+/** Sections grid sizing — BT cards need explicit space; native tiles use the default 1×1 cell. */
+const BT_GRID_OPTIONS: Record<BetterThermostatCardVariant, LovelaceGridOptions> = {
+  mini: { columns: 'full', rows: 2 },
+  normal: { columns: 'full', rows: 6 },
 };
 
 export function getBetterThermostatCardVariant(
@@ -34,6 +40,7 @@ export function buildClimateCard(
     const card: LovelaceCardConfig = {
       type: BT_CARD_TYPES[variant],
       entity: entityId,
+      grid_options: BT_GRID_OPTIONS[variant],
     };
     if (options?.name) {
       card.name = options.name;

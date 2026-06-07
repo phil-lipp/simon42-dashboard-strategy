@@ -26,6 +26,10 @@ import {
   getBetterThermostatCardVariant,
   isBetterThermostatCardAvailable,
 } from '../utils/climate-card-builder';
+import {
+  isClockWeatherCardAvailable,
+  isHorizonCardAvailable,
+} from '../utils/weather-card-builder';
 
 // -- Supporting types for the editor ------------------------------------
 
@@ -117,6 +121,14 @@ class Simon42DashboardStrategyEditor extends LitElement {
 
   private _checkBetterThermostatCardDependencies(variant: 'normal' | 'mini'): boolean {
     return isBetterThermostatCardAvailable(variant);
+  }
+
+  private _checkClockWeatherCardDependencies(): boolean {
+    return isClockWeatherCardAvailable();
+  }
+
+  private _checkHorizonCardDependencies(): boolean {
+    return isHorizonCardAvailable();
   }
 
   // -- Entity helpers ---------------------------------------------------
@@ -1014,6 +1026,7 @@ class Simon42DashboardStrategyEditor extends LitElement {
       <div class="card-config">
         ${this._renderOverviewSection()}
         ${this._renderSummariesSection()}
+        ${this._renderWeatherSection()}
         ${this._renderFavoritesSection()}
 
         <div class="section-divider">
@@ -1297,6 +1310,54 @@ class Simon42DashboardStrategyEditor extends LitElement {
             ? localize('editor.show_search_card_desc')
             : html`<span>&#x26A0;&#xFE0F; ${unsafeHTML(localize('editor.show_search_card_missing'))}</span>`}
         </div>
+      </div>
+    `;
+  }
+
+  private _renderWeatherSection(): TemplateResult {
+    const showWeather = this._config.show_weather !== false;
+    const useClockWeatherCard = this._config.use_clock_weather_card === true;
+    const showHorizonCard = this._config.show_horizon_card === true;
+    const hasClockWeatherCardDeps = this._checkClockWeatherCardDependencies();
+    const hasHorizonCardDeps = this._checkHorizonCardDependencies();
+
+    return html`
+      <div class="section">
+        <div class="section-title">${localize('editor.section_weather')}</div>
+
+        ${this._renderCheckbox('show-weather', localize('editor.show_weather'), showWeather,
+          (checked) => this._toggleChanged('show_weather', checked, true))}
+        <div class="description">${localize('editor.show_weather_desc')}</div>
+
+        ${showWeather ? html`
+          <div style="margin-left: 26px; margin-bottom: 8px;">
+            ${this._renderCheckbox(
+              'use-clock-weather-card',
+              localize('editor.use_clock_weather_card'),
+              useClockWeatherCard,
+              (checked) => this._toggleChanged('use_clock_weather_card', checked, false),
+              !hasClockWeatherCardDeps
+            )}
+            <div class="description">
+              ${hasClockWeatherCardDeps
+                ? localize('editor.use_clock_weather_card_desc')
+                : html`<span>&#x26A0;&#xFE0F; ${unsafeHTML(localize('editor.use_clock_weather_card_missing'))}</span>`}
+            </div>
+
+            ${this._renderCheckbox(
+              'show-horizon-card',
+              localize('editor.show_horizon_card'),
+              showHorizonCard,
+              (checked) => this._toggleChanged('show_horizon_card', checked, false),
+              !hasHorizonCardDeps
+            )}
+            <div class="description">
+              ${hasHorizonCardDeps
+                ? localize('editor.show_horizon_card_desc')
+                : html`<span>&#x26A0;&#xFE0F; ${unsafeHTML(localize('editor.show_horizon_card_missing'))}</span>`}
+            </div>
+          </div>
+        ` : nothing}
       </div>
     `;
   }

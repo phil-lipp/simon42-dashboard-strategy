@@ -23,6 +23,8 @@ export const DEFAULT_SECTIONS_ORDER: SectionKey[] = [
 export interface Simon42StrategyConfig {
   // Global toggles
   show_weather?: boolean; // default: true
+  use_clock_weather_card?: boolean; // default: false
+  show_horizon_card?: boolean; // default: false
   show_energy?: boolean; // default: true
   show_search_card?: boolean; // default: false
   show_summary_views?: boolean; // default: false

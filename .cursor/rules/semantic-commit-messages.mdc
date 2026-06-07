@@ -1,0 +1,58 @@
+---
+description: Suggest semantic commit messages after code or documentation changes
+alwaysApply: true
+---
+
+# Semantic Commit Messages
+
+After completing changes to source code or documentation, **always suggest a semantic commit message** — even when the user did not ask to commit.
+
+## Format
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>): <short imperative summary>
+```
+
+- **type**: `feat`, `fix`, `docs`, `refactor`, `chore`, `test`, `build`, `ci`, `perf`, `style`
+- **scope** (optional): affected area, e.g. `climate`, `editor`, `registry`, `room-view`
+- **summary**: imperative mood, lowercase, no trailing period, max ~72 characters
+
+## When to Suggest
+
+Suggest a commit message when you:
+- Implement a feature or fix
+- Refactor or restructure code
+- Update documentation (`CLAUDE.md`, `README`, comments with behavioral impact)
+- Change build, CI, or release tooling
+
+Do **not** suggest a commit unless you actually made or described concrete changes.
+
+## Examples (match this repo's style)
+
+```
+feat(climate): support Better Thermostat UI card (normal/mini)
+fix: exclude Tankerkoenig binary sensors from security view and summary
+docs: clarify temp/humidity sensor assignment is in HA settings
+refactor: editor Lit migration with HA-styled UI and entity search
+chore: bump version to v1.3.4-beta.8
+```
+
+## How to Present
+
+At the end of your response, include a short **Suggested commit** block:
+
+```
+Suggested commit:
+feat(scope): concise description of why the change was made
+```
+
+- Focus on **why**, not a file list
+- Add `Closes #NN` or `(#NN)` when the change addresses a known issue or PR
+- If changes span multiple unrelated concerns, note that they should be split into separate commits
+
+## Constraints
+
+- Suggesting a message does **not** mean committing — only commit when the user explicitly asks
+- One logical change → one suggested message; do not batch unrelated work into a single message

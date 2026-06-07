@@ -80,7 +80,6 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
     const personBadges = createPersonBadges(persons, hass);
 
     // Config flags
-    const showWeather = dashboardConfig.show_weather !== false;
     const showEnergy = dashboardConfig.show_energy !== false;
     const showSearchCard = dashboardConfig.show_search_card === true;
     const groupByFloors = dashboardConfig.group_by_floors === true;
@@ -109,7 +108,7 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
       ['overview', overviewSection],
       ['custom_cards', customCardsSection],
       ['areas', areasSections],
-      ['weather', createWeatherSection(weatherEntity ?? null, showWeather)],
+      ['weather', createWeatherSection(weatherEntity ?? null, dashboardConfig)],
       ['energy', createEnergySection(showEnergy, dashboardConfig.energy_link_dashboard !== false)],
     ]);
 
