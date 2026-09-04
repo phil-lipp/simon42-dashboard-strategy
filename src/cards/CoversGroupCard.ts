@@ -4,9 +4,18 @@
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import type { HomeAssistant } from '../types/homeassistant';
+import type { AreaRegistryEntry } from '../types/registries';
 import { Registry } from '../Registry';
 import { trackHassUpdate } from '../utils/debug';
 import { localize } from '../utils/localize';
+import { isEntityCurrentlyAvailable } from '../utils/availability-utils';
+import { getVisibleAreasFromHass } from '../utils/name-utils';
+import type { AreasDisplay } from '../types/strategy';
+
+interface LovelaceCardElement extends HTMLElement {
+  hass?: HomeAssistant;
+  setConfig(config: Record<string, unknown>): void;
+}
 
 declare global {
   interface Window {
@@ -24,6 +33,25 @@ interface CoversGroupConfig {
   heading_partial?: string;
   batch_open_text?: string;
   batch_close_text?: string;
+  icon_open?: string;
+  icon_closed?: string;
+  icon_partial?: string;
+  group_by_floors?: boolean;
+  group_by_areas?: boolean;
+}
+
+interface CoversAreaGroup {
+  areaId: string | null; // null = "no area" bucket
+  areaName: string;
+  covers: string[];
+}
+
+interface CoversFloorGroup {
+  floorId: string | null;
+  floorName: string;
+  floorIcon: string;
+  covers: string[];
+  areas: CoversAreaGroup[]; // populated only when group_by_areas is on
 }
 
 // Pre-compiled RegExps for cover type name stripping
@@ -59,11 +87,14 @@ class Simon42CoversGroupCard extends LitElement {
   private _config!: CoversGroupConfig;
   private _deviceClasses!: string[];
   private _cachedFilteredIds: Set<string> | null = null;
+  private _cachedAreaForEntity: Map<string, string | null> | null = null;
   private _lastCoversList = '';
 
   // Reusable card pool
   private _tileCards: Map<string, any> = new Map();
   private _headingCard: any = null;
+  private _floorHeadingCards: Map<string, LovelaceCardElement> = new Map();
+  private _areaHeadingCards: Map<string, LovelaceCardElement> = new Map();
 
   static styles = css`
     :host {
@@ -83,6 +114,16 @@ class Simon42CoversGroupCard extends LitElement {
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 8px;
     }
+    .floor-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .area-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
   `;
 
   setConfig(config: CoversGroupConfig): void {
@@ -98,6 +139,7 @@ class Simon42CoversGroupCard extends LitElement {
 
     if (!oldHass || oldHass.entities !== this.hass.entities) {
       this._cachedFilteredIds = null;
+      this._cachedAreaForEntity = null;
     }
 
     // Build cache if needed
@@ -135,6 +177,7 @@ class Simon42CoversGroupCard extends LitElement {
 
     const relevant: string[] = [];
     for (const id of this._cachedFilteredIds) {
+      if (!isEntityCurrentlyAvailable(this.hass, id, this._config.config)) continue;
       const state = this.hass.states[id];
       if (!state) continue;
 
@@ -181,6 +224,107 @@ class Simon42CoversGroupCard extends LitElement {
     return relevant;
   }
 
+  private _getAreaForEntity(entityId: string): string | null {
+    if (!this._cachedAreaForEntity) this._cachedAreaForEntity = new Map();
+    if (this._cachedAreaForEntity.has(entityId)) {
+      return this._cachedAreaForEntity.get(entityId) ?? null;
+    }
+    const entity = Registry.getEntity(entityId);
+    let areaId: string | null = entity?.area_id ?? null;
+    if (!areaId && entity?.device_id) {
+      const device = Registry.getDevice(entity.device_id);
+      areaId = device?.area_id ?? null;
+    }
+    this._cachedAreaForEntity.set(entityId, areaId);
+    return areaId;
+  }
+
+  private _groupByFloors(covers: string[]): CoversFloorGroup[] {
+    if (!this.hass) return [];
+
+    const areas: AreaRegistryEntry[] = Object.values(this.hass.areas);
+    const areaFloorMap = new Map<string, string | null>();
+    for (const area of areas) {
+      areaFloorMap.set(area.area_id, area.floor_id ?? null);
+    }
+
+    const floorMap = new Map<string | null, string[]>();
+    for (const id of covers) {
+      const areaId = this._getAreaForEntity(id);
+      const floorId = areaId ? (areaFloorMap.get(areaId) ?? null) : null;
+      if (!floorMap.has(floorId)) floorMap.set(floorId, []);
+      floorMap.get(floorId)?.push(id);
+    }
+
+    // HA's floor registry order preserves the user-defined "Reorder areas and floors" sequence
+    const floors = this.hass.floors;
+    const floorOrder = Object.keys(floors);
+    const sortedKeys: (string | null)[] = [
+      ...floorOrder.filter((id) => floorMap.has(id)),
+      ...(floorMap.has(null) ? [null] : []),
+    ];
+
+    return sortedKeys.map((floorId) => {
+      const floor = floorId ? floors[floorId] : null;
+      return {
+        floorId,
+        floorName: floor?.name || localize('lights.floor_other'),
+        floorIcon: floor?.icon || 'mdi:home-outline',
+        covers: floorMap.get(floorId) ?? [],
+        areas: [],
+      };
+    });
+  }
+
+  /**
+   * Bucket a set of covers by area, following the user's area visibility/order
+   * (areas_display + use_default_area_sort) — same source the security view and
+   * the batteries view use. Entities without an area land in a trailing
+   * "no area" bucket (#406).
+   */
+  private _groupByAreas(covers: string[]): CoversAreaGroup[] {
+    if (!this.hass) return [];
+    const dashboardConfig = (this._config.config || {}) as { areas_display?: AreasDisplay; use_default_area_sort?: boolean };
+    const visibleAreas = getVisibleAreasFromHass(this.hass, dashboardConfig.areas_display, dashboardConfig.use_default_area_sort);
+
+    const byArea = new Map<string, string[]>();
+    const noArea: string[] = [];
+    for (const id of covers) {
+      const areaId = this._getAreaForEntity(id);
+      if (!areaId) {
+        noArea.push(id);
+        continue;
+      }
+      const arr = byArea.get(areaId) || [];
+      arr.push(id);
+      byArea.set(areaId, arr);
+    }
+
+    const groups: CoversAreaGroup[] = [];
+    for (const area of visibleAreas) {
+      const arr = byArea.get(area.area_id);
+      if (!arr || arr.length === 0) continue;
+      groups.push({ areaId: area.area_id, areaName: area.name, covers: arr });
+    }
+    if (noArea.length > 0) {
+      groups.push({ areaId: null, areaName: localize('covers.no_area'), covers: noArea });
+    }
+    return groups;
+  }
+
+  private _getFloorDomKey(floorId: string | null): string {
+    return floorId ?? '_none';
+  }
+
+  private _getAreaDomKey(areaId: string | null): string {
+    return areaId ?? '_none';
+  }
+
+  /** Stable DOM id for an area heading/grid, optionally scoped under a floor. */
+  private _getAreaSlotId(prefix: 'area-heading' | 'area-grid', floorKey: string | null, areaKey: string): string {
+    return floorKey !== null ? `${prefix}-${floorKey}__${areaKey}` : `${prefix}-${areaKey}`;
+  }
+
   private _stripCoverType(entityId: string): string {
     const state = this.hass?.states[entityId];
     if (!state) return entityId;
@@ -195,17 +339,41 @@ class Simon42CoversGroupCard extends LitElement {
     return name.trim() || state.attributes.friendly_name || entityId;
   }
 
-  private _buildHeadingConfig(covers: string[]): any {
+  private _buildHeadingConfig(
+    covers: string[],
+    opts: { label?: string; icon?: string; level?: 'main' | 'floor' | 'area'; areaId?: string | null } = {},
+  ): Record<string, unknown> {
+    const level = opts.level ?? 'main';
+
+    // Security-style sub-headings when grouping by area: bare area/floor name,
+    // no count, no batch badges. Floor = title (with icon), area = subtitle and
+    // tappable → room view — matches the security view's area-grouped layout.
+    // The single main heading keeps its count + global batch button.
+    if (this._config.group_by_areas === true && level !== 'main') {
+      const cfg: Record<string, unknown> = {
+        type: 'heading',
+        heading: opts.label,
+        heading_style: level === 'floor' ? 'title' : 'subtitle',
+      };
+      if (opts.icon) cfg.icon = opts.icon;
+      if (level === 'area' && opts.areaId) {
+        cfg.tap_action = { action: 'navigate', navigation_path: opts.areaId };
+      }
+      return cfg;
+    }
+
     const groupType = this._config.group_type;
+    const floorLabel = opts.label;
+    const floorIcon = opts.icon;
     const openText = this._config.batch_open_text || localize('covers.open_all');
     const closeText = this._config.batch_close_text || localize('covers.close_all');
 
     if (groupType === 'partially_open') {
-      const headingLabel = this._config.heading_partial || localize('covers.partially_open');
+      const headingLabel = floorLabel || this._config.heading_partial || localize('covers.partially_open');
       return {
         type: 'heading',
         heading: `${headingLabel} (${covers.length})`,
-        icon: 'mdi:blinds-horizontal',
+        icon: floorIcon || this._config.icon_partial || 'mdi:blinds-horizontal',
         badges: [
           {
             type: 'button',
@@ -232,13 +400,16 @@ class Simon42CoversGroupCard extends LitElement {
     }
 
     const isOpen = groupType === 'open';
-    const headingLabel = isOpen
+    const headingLabel = floorLabel || (isOpen
       ? (this._config.heading_open || localize('covers.open'))
-      : (this._config.heading_closed || localize('covers.closed'));
+      : (this._config.heading_closed || localize('covers.closed')));
+    const defaultIcon = isOpen ? 'mdi:blinds-horizontal' : 'mdi:blinds';
+    const headingIcon = floorIcon
+      || (isOpen ? (this._config.icon_open || defaultIcon) : (this._config.icon_closed || defaultIcon));
     return {
       type: 'heading',
       heading: `${headingLabel} (${covers.length})`,
-      icon: isOpen ? 'mdi:blinds-horizontal' : 'mdi:blinds',
+      icon: headingIcon,
       badges: [
         {
           type: 'button',
@@ -293,12 +464,151 @@ class Simon42CoversGroupCard extends LitElement {
     const covers = this._getRelevantCovers();
     this.hidden = covers.length === 0;
 
+    const groupByFloors = this._config.group_by_floors === true;
+    const groupByAreas = this._config.group_by_areas === true;
+
+    // Floor mode — optionally with nested area blocks per floor
+    if (groupByFloors && covers.length > 0) {
+      const floorGroups = this._groupByFloors(covers);
+      return html`
+        <div class="covers-section">
+          <div id="heading"></div>
+          ${floorGroups.map((group) => {
+            const floorKey = this._getFloorDomKey(group.floorId);
+            const areas = groupByAreas ? this._groupByAreas(group.covers) : [];
+            return html`
+              <div class="floor-section">
+                <div id=${`floor-heading-${floorKey}`}></div>
+                ${groupByAreas
+                  ? areas.map((area) => {
+                      const areaKey = this._getAreaDomKey(area.areaId);
+                      return html`
+                        <div class="area-section">
+                          <div id=${this._getAreaSlotId('area-heading', floorKey, areaKey)}></div>
+                          <div class="cover-grid" id=${this._getAreaSlotId('area-grid', floorKey, areaKey)}></div>
+                        </div>
+                      `;
+                    })
+                  : html`<div class="cover-grid" id=${`floor-grid-${floorKey}`}></div>`}
+              </div>
+            `;
+          })}
+        </div>
+      `;
+    }
+
+    // Area-only mode — no floor super-grouping
+    if (groupByAreas && covers.length > 0) {
+      const areas = this._groupByAreas(covers);
+      return html`
+        <div class="covers-section">
+          <div id="heading"></div>
+          ${areas.map((area) => {
+            const areaKey = this._getAreaDomKey(area.areaId);
+            return html`
+              <div class="area-section">
+                <div id=${this._getAreaSlotId('area-heading', null, areaKey)}></div>
+                <div class="cover-grid" id=${this._getAreaSlotId('area-grid', null, areaKey)}></div>
+              </div>
+            `;
+          })}
+        </div>
+      `;
+    }
+
+    // Flat mode — no grouping
     return html`
       <div class="covers-section">
         <div id="heading"></div>
         <div class="cover-grid" id="grid"></div>
       </div>
     `;
+  }
+
+  // --- reconciliation helpers (shared across flat / floor / area modes) ---
+
+  /** Order pooled tile cards inside a grid slot to match `covers`, removing
+   *  any tiles no longer belonging to this grid. */
+  private _reconcileGrid(gridId: string, covers: string[]): void {
+    const grid = this.shadowRoot?.getElementById(gridId);
+    if (!grid) return;
+    let prevNode: Node | null = null;
+    for (const entityId of covers) {
+      const card = this._getOrCreateTileCard(entityId);
+      const nextSibling = prevNode ? prevNode.nextSibling : grid.firstChild;
+      if (card !== nextSibling) grid.insertBefore(card, nextSibling);
+      prevNode = card;
+    }
+    while (prevNode && prevNode.nextSibling) {
+      grid.removeChild(prevNode.nextSibling);
+    }
+  }
+
+  /** Create-or-update a pooled heading card in a slot. */
+  private _reconcileHeadingCard(
+    slotId: string,
+    cardMap: Map<string, LovelaceCardElement>,
+    key: string,
+    headingConfig: Record<string, unknown>,
+  ): void {
+    const hass = this.hass;
+    if (!hass) return;
+    const slot = this.shadowRoot?.getElementById(slotId);
+    if (!slot) return;
+    let card = cardMap.get(key);
+    if (!card) {
+      card = document.createElement('hui-heading-card') as LovelaceCardElement;
+      cardMap.set(key, card);
+    }
+    if (card.parentNode !== slot) slot.appendChild(card);
+    card.hass = hass;
+    card.setConfig(headingConfig);
+  }
+
+  /** Main heading (total count + batch over all covers) — present in every mode. */
+  private _reconcileMainHeading(covers: string[]): void {
+    const hass = this.hass;
+    if (!hass) return;
+    const slot = this.shadowRoot?.getElementById('heading');
+    if (!slot) return;
+    if (!this._headingCard) {
+      this._headingCard = document.createElement('hui-heading-card');
+      slot.appendChild(this._headingCard);
+    }
+    this._headingCard.hass = hass;
+    this._headingCard.setConfig(this._buildHeadingConfig(covers));
+  }
+
+  /** Drop pooled heading cards whose key is no longer active. */
+  private _cleanupHeadingCards(cardMap: Map<string, LovelaceCardElement>, activeKeys: Set<string>): void {
+    for (const [key, card] of cardMap) {
+      if (!activeKeys.has(key)) {
+        if (card.parentNode) card.parentNode.removeChild(card);
+        cardMap.delete(key);
+      }
+    }
+  }
+
+  /** Drop pooled tile cards whose entity is no longer active. */
+  private _cleanupTileCards(activeIds: Set<string>): void {
+    for (const [id, card] of this._tileCards) {
+      if (!activeIds.has(id)) {
+        if (card.parentNode) card.parentNode.removeChild(card);
+        this._tileCards.delete(id);
+      }
+    }
+  }
+
+  private _clearSlots(): void {
+    const headingSlot = this.shadowRoot?.getElementById('heading');
+    if (headingSlot) headingSlot.innerHTML = '';
+    const grid = this.shadowRoot?.getElementById('grid');
+    if (grid) grid.innerHTML = '';
+    this._headingCard = null;
+    this._floorHeadingCards.clear();
+    this._areaHeadingCards.clear();
+    this._tileCards.clear();
+    this._lastCoversList = '';
   }
 
   protected updated(changedProps: PropertyValues): void {
@@ -311,56 +621,81 @@ class Simon42CoversGroupCard extends LitElement {
     this._lastCoversList = coversKey;
 
     if (covers.length === 0) {
-      const headingSlot = this.shadowRoot?.getElementById('heading');
-      if (headingSlot) headingSlot.innerHTML = '';
-      const grid = this.shadowRoot?.getElementById('grid');
-      if (grid) grid.innerHTML = '';
-      this._headingCard = null;
-      this._tileCards.clear();
-      this._lastCoversList = '';
+      this._clearSlots();
       return;
     }
 
-    // Reconcile heading card
-    const headingSlot = this.shadowRoot?.getElementById('heading');
-    if (headingSlot) {
-      if (!this._headingCard) {
-        this._headingCard = document.createElement('hui-heading-card');
-        headingSlot.appendChild(this._headingCard);
-      }
-      this._headingCard.hass = this.hass;
-      this._headingCard.setConfig(this._buildHeadingConfig(covers));
-    }
-
-    // Reconcile tile cards in grid
-    const grid = this.shadowRoot?.getElementById('grid');
-    if (!grid) return;
-
+    const groupByFloors = this._config.group_by_floors === true;
+    const groupByAreas = this._config.group_by_areas === true;
     const activeIds = new Set(covers);
 
-    // Remove cards for entities no longer in the list
-    for (const [id, card] of this._tileCards) {
-      if (!activeIds.has(id)) {
-        if (card.parentNode === grid) grid.removeChild(card);
-        this._tileCards.delete(id);
+    // Main heading — every mode
+    this._reconcileMainHeading(covers);
+
+    if (groupByFloors) {
+      const floorGroups = this._groupByFloors(covers);
+      const activeFloorKeys = new Set<string>();
+      const activeAreaKeys = new Set<string>();
+
+      for (const group of floorGroups) {
+        const floorKey = this._getFloorDomKey(group.floorId);
+        activeFloorKeys.add(floorKey);
+        this._reconcileHeadingCard(
+          `floor-heading-${floorKey}`,
+          this._floorHeadingCards,
+          floorKey,
+          this._buildHeadingConfig(group.covers, { label: group.floorName, icon: group.floorIcon, level: 'floor' }),
+        );
+
+        if (groupByAreas) {
+          // Area blocks nested under this floor
+          const areas = this._groupByAreas(group.covers);
+          for (const area of areas) {
+            const areaKey = this._getAreaDomKey(area.areaId);
+            const compositeKey = `${floorKey}__${areaKey}`;
+            activeAreaKeys.add(compositeKey);
+            this._reconcileHeadingCard(
+              this._getAreaSlotId('area-heading', floorKey, areaKey),
+              this._areaHeadingCards,
+              compositeKey,
+              this._buildHeadingConfig(area.covers, { label: area.areaName, level: 'area', areaId: area.areaId }),
+            );
+            this._reconcileGrid(this._getAreaSlotId('area-grid', floorKey, areaKey), area.covers);
+          }
+        } else {
+          this._reconcileGrid(`floor-grid-${floorKey}`, group.covers);
+        }
       }
+
+      this._cleanupHeadingCards(this._floorHeadingCards, activeFloorKeys);
+      if (groupByAreas) this._cleanupHeadingCards(this._areaHeadingCards, activeAreaKeys);
+      this._cleanupTileCards(activeIds);
+      return;
     }
 
-    // Add/reorder cards to match the desired order
-    let prevNode: Node | null = null;
-    for (const entityId of covers) {
-      const card = this._getOrCreateTileCard(entityId);
-      const nextSibling = prevNode ? prevNode.nextSibling : grid.firstChild;
-      if (card !== nextSibling) {
-        grid.insertBefore(card, nextSibling);
+    if (groupByAreas) {
+      // Area-only mode (no floor super-grouping)
+      const areas = this._groupByAreas(covers);
+      const activeAreaKeys = new Set<string>();
+      for (const area of areas) {
+        const areaKey = this._getAreaDomKey(area.areaId);
+        activeAreaKeys.add(areaKey);
+        this._reconcileHeadingCard(
+          this._getAreaSlotId('area-heading', null, areaKey),
+          this._areaHeadingCards,
+          areaKey,
+          this._buildHeadingConfig(area.covers, { label: area.areaName, level: 'area', areaId: area.areaId }),
+        );
+        this._reconcileGrid(this._getAreaSlotId('area-grid', null, areaKey), area.covers);
       }
-      prevNode = card;
+      this._cleanupHeadingCards(this._areaHeadingCards, activeAreaKeys);
+      this._cleanupTileCards(activeIds);
+      return;
     }
 
-    // Remove trailing stale nodes
-    while (prevNode && prevNode.nextSibling) {
-      grid.removeChild(prevNode.nextSibling);
-    }
+    // Flat mode (no grouping)
+    this._reconcileGrid('grid', covers);
+    this._cleanupTileCards(activeIds);
   }
 
   getCardSize(): number {

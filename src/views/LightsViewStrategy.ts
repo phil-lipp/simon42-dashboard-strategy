@@ -3,15 +3,18 @@
 // ====================================================================
 
 import type { LovelaceViewConfig } from '../types/lovelace';
+import { densePlacement } from '../utils/view-builder';
 
 class Simon42ViewLightsStrategy extends HTMLElement {
   static async generate(config: any, _hass: any): Promise<LovelaceViewConfig> {
     const dashboardConfig = config.dashboardConfig || config.config || {};
     const groupByFloors = dashboardConfig.group_lights_by_floors === true;
+    const groupByAreas = dashboardConfig.group_lights_by_areas === true;
     const nestedGroups = dashboardConfig.nested_light_groups === true;
 
     return {
       type: 'sections',
+      ...densePlacement(dashboardConfig),
       sections: [
         {
           type: 'grid',
@@ -22,7 +25,9 @@ class Simon42ViewLightsStrategy extends HTMLElement {
               config: config.config,
               group_type: 'on',
               group_by_floors: groupByFloors,
+              group_by_areas: groupByAreas,
               nested_groups: nestedGroups,
+              sort_by: dashboardConfig.lights_sort_by,
             },
             {
               type: 'custom:simon42-lights-group-card',
@@ -30,7 +35,9 @@ class Simon42ViewLightsStrategy extends HTMLElement {
               config: config.config,
               group_type: 'off',
               group_by_floors: groupByFloors,
+              group_by_areas: groupByAreas,
               nested_groups: nestedGroups,
+              sort_by: dashboardConfig.lights_sort_by,
             },
           ],
         },

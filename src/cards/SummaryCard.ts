@@ -8,19 +8,17 @@ import { Registry } from '../Registry';
 import { trackHassUpdate, debugLog, timeStart, timeEnd } from '../utils/debug';
 import { localize } from '../utils/localize';
 import { getBatteryEntities, SECURITY_EXCLUDED_PLATFORMS } from '../utils/entity-filter';
+import { isEntityCurrentlyAvailable } from '../utils/availability-utils';
+import { buildMaintenanceScan, countMaintenanceItems, type MaintenanceScan } from '../utils/maintenance-utils';
 
-declare global {
-  interface Window {
-    customCards?: Array<{ type: string; name: string; description: string }>;
-  }
-}
-
-type SummaryType = 'lights' | 'covers' | 'security' | 'batteries' | 'climate';
+type SummaryType = 'lights' | 'covers' | 'security' | 'batteries' | 'climate' | 'maintenance';
 
 interface SummaryCardConfig {
   summary_type: SummaryType;
   hide_mobile_app_batteries?: boolean;
+  hide_battery_notes_entities?: boolean;
   battery_critical_threshold?: number;
+  hide_unavailable_entities?: boolean;
 }
 
 interface DisplayConfig {
@@ -33,7 +31,7 @@ interface DisplayConfig {
 const COVER_DEVICE_CLASSES = new Set(['awning', 'blind', 'curtain', 'shade', 'shutter', 'window']);
 
 const SECURITY_COVER_CLASSES = new Set(['door', 'garage', 'gate', 'window']);
-const SECURITY_BINARY_SENSOR_CLASSES = new Set(['door', 'window', 'garage_door', 'opening', 'smoke', 'gas']);
+const SECURITY_BINARY_SENSOR_CLASSES = new Set(['door', 'window', 'garage_door', 'opening', 'smoke', 'gas', 'heat', 'moisture']);
 
 const COLOR_MAP: Record<string, string> = {
   orange: 'var(--orange-color, #ff9800)',
@@ -53,6 +51,9 @@ class Simon42SummaryCard extends LitElement {
   private _count = 0;
   private _config!: SummaryCardConfig;
   private _relevantEntityIds: Set<string> | null = null;
+  // maintenance type only: cached id structure (updates, per-device groups,
+  // batteries) — invalidated together with _relevantEntityIds
+  private _maintenanceScan: MaintenanceScan | null = null;
 
   static styles = css`
     :host {
@@ -92,6 +93,7 @@ class Simon42SummaryCard extends LitElement {
   setConfig(config: SummaryCardConfig): void {
     this._config = config;
     this._relevantEntityIds = null;
+    this._maintenanceScan = null;
   }
 
   protected willUpdate(changedProps: PropertyValues): void {
@@ -102,6 +104,7 @@ class Simon42SummaryCard extends LitElement {
 
     if (!oldHass || oldHass.entities !== this.hass.entities) {
       this._relevantEntityIds = null;
+      this._maintenanceScan = null;
       debugLog(`summary-${this._config.summary_type}: cache invalidated (registry changed)`);
     }
 
@@ -167,9 +170,15 @@ class Simon42SummaryCard extends LitElement {
           const entry = Registry.getEntity(id);
           if (entry?.platform && SECURITY_EXCLUDED_PLATFORMS.has(entry.platform)) continue;
           const deviceClass = state.attributes?.device_class;
-          if (deviceClass !== undefined && SECURITY_BINARY_SENSOR_CLASSES.has(deviceClass)) {
-            result.push(id);
+          if (deviceClass === undefined || !SECURITY_BINARY_SENSOR_CLASSES.has(deviceClass)) continue;
+          // Skip relay-style devices that expose an `opening` binary_sensor
+          // alongside their primary switch (e.g. SONOFF ZBMINIR2/L2). The
+          // "opening" state mirrors the relay, not a door/window contact.
+          if (deviceClass === 'opening' && entry?.device_id) {
+            const siblings = Registry.getEntityIdsForDevice(entry.device_id);
+            if (siblings.some((sid) => sid.startsWith('switch.'))) continue;
           }
+          result.push(id);
         }
         break;
       }
@@ -185,6 +194,14 @@ class Simon42SummaryCard extends LitElement {
         );
         break;
 
+      case 'maintenance': {
+        // Cached id structure; the per-update count pass iterates update +
+        // battery ids and early-exits per device group (see maintenance-utils)
+        this._maintenanceScan = buildMaintenanceScan(hass, this._config);
+        result = [...this._maintenanceScan.updateIds, ...this._maintenanceScan.batteryIds];
+        break;
+      }
+
       default:
         result = [];
     }
@@ -198,6 +215,15 @@ class Simon42SummaryCard extends LitElement {
     if (!this.hass) return 0;
 
     this._getRelevantEntities();
+
+    // Maintenance counts device availability too, so it must not bail out
+    // on an empty entity set like the other types do.
+    if (this._config.summary_type === 'maintenance') {
+      if (!this._maintenanceScan) return 0;
+      const critThreshold = this._config.battery_critical_threshold ?? 20;
+      return countMaintenanceItems(this.hass, this._maintenanceScan, critThreshold);
+    }
+
     if (!this._relevantEntityIds || this._relevantEntityIds.size === 0) return 0;
 
     const hass = this.hass;
@@ -206,12 +232,14 @@ class Simon42SummaryCard extends LitElement {
     switch (this._config.summary_type) {
       case 'lights':
         for (const id of this._relevantEntityIds) {
+          if (!isEntityCurrentlyAvailable(hass, id, this._config)) continue;
           if (hass.states[id]?.state === 'on') count++;
         }
         return count;
 
       case 'covers':
         for (const id of this._relevantEntityIds) {
+          if (!isEntityCurrentlyAvailable(hass, id, this._config)) continue;
           const s = hass.states[id]?.state;
           if (s === 'open' || s === 'opening') count++;
         }
@@ -219,6 +247,7 @@ class Simon42SummaryCard extends LitElement {
 
       case 'security':
         for (const id of this._relevantEntityIds) {
+          if (!isEntityCurrentlyAvailable(hass, id, this._config)) continue;
           const state = hass.states[id];
           if (!state) continue;
           if (id.startsWith('lock.') && state.state === 'unlocked') count++;
@@ -234,19 +263,27 @@ class Simon42SummaryCard extends LitElement {
           if (!state) continue;
           if (id.startsWith('binary_sensor.')) {
             if (state.state === 'on') count++;
-          } else {
-            const unit = state.attributes?.unit_of_measurement;
-            if (unit && unit !== '%') continue;
-            const value = parseFloat(state.state);
-            const isUnavailable = state.state === 'unavailable' || state.state === 'unknown';
-            if (isUnavailable || (!isNaN(value) && value < critThreshold)) count++;
+            continue;
           }
+
+          const unit = state.attributes?.unit_of_measurement;
+          if (unit && unit !== '%') continue;
+
+          const isUnavailable = state.state === 'unavailable' || state.state === 'unknown';
+          if (isUnavailable) {
+            if (!this._config.hide_unavailable_entities) count++;
+            continue;
+          }
+
+          const value = parseFloat(state.state);
+          if (!isNaN(value) && value < critThreshold) count++;
         }
         return count;
       }
 
       case 'climate':
         for (const id of this._relevantEntityIds) {
+          if (!isEntityCurrentlyAvailable(hass, id, this._config)) continue;
           const s = hass.states[id]?.state;
           if (s && s !== 'off' && s !== 'unavailable' && s !== 'unknown') count++;
         }
@@ -291,6 +328,12 @@ class Simon42SummaryCard extends LitElement {
         name: hasItems ? `${count} ${count === 1 ? localize('summary.climate_active_one') : localize('summary.climate_active_many')}` : localize('summary.climate_off'),
         color: hasItems ? 'orange' : 'grey',
         path: 'climate',
+      },
+      maintenance: {
+        icon: 'mdi:wrench',
+        name: hasItems ? `${count} ${count === 1 ? localize('summary.maintenance_pending_one') : localize('summary.maintenance_pending_many')}` : localize('summary.maintenance_ok'),
+        color: hasItems ? 'orange' : 'grey',
+        path: 'maintenance',
       },
     };
 
@@ -337,9 +380,6 @@ class Simon42SummaryCard extends LitElement {
 
 customElements.define('simon42-summary-card', Simon42SummaryCard);
 
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: 'simon42-summary-card',
-  name: 'Simon42 Summary Card',
-  description: 'Reactive summary card that counts entities dynamically',
-});
+// Deliberately NOT registered in window.customCards: the card only works
+// inside the strategy (Registry + localize lifecycle, see #147). Listing it
+// in the card picker would invite standalone use that breaks.

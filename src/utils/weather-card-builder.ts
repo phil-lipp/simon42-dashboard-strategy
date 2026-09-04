@@ -12,21 +12,14 @@ export function isHorizonCardAvailable(): boolean {
   return customElements.get('horizon-card') !== undefined;
 }
 
-export function buildWeatherForecastCard(
-  weatherEntity: string,
-  config: Simon42StrategyConfig
-): LovelaceCardConfig {
-  if (config.use_clock_weather_card === true && isClockWeatherCardAvailable()) {
-    return {
-      type: CLOCK_WEATHER_CARD_TYPE,
-      entity: weatherEntity,
-    };
-  }
+export function shouldUseClockWeatherCard(config: Simon42StrategyConfig): boolean {
+  return config.use_clock_weather_card === true && isClockWeatherCardAvailable();
+}
 
+export function buildClockWeatherCard(weatherEntity: string): LovelaceCardConfig {
   return {
-    type: 'weather-forecast',
+    type: CLOCK_WEATHER_CARD_TYPE,
     entity: weatherEntity,
-    forecast_type: 'daily',
   };
 }
 

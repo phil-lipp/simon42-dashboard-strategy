@@ -7,16 +7,22 @@
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
-import type { LovelaceCardConfig, LovelaceSectionConfig } from '../types/lovelace';
+import type { LovelaceCardConfig, LovelaceCondition, LovelaceSectionConfig } from '../types/lovelace';
 import type { AreaRegistryEntry } from '../types/registries';
+import type { AreaDisplayType, AreaOptions } from '../types/strategy';
 import { Registry } from '../Registry';
 import { localize } from '../utils/localize';
+import { getViewVisibleUsers, userVisibilityConditions, unionVisibleUsers } from '../utils/view-visibility';
 
-// Area control domains to check (same as HA, with optional 'switch')
+// Area control domains to check (same set as HA, with optional 'switch').
+// Array order = render order of the shortcut icons on the area cards.
+// The tail is deliberately fixed: … → fan → covers → light. Lights exist in
+// almost every room, so keeping them in the last slot (and covers/fans right
+// before them) makes the icons line up vertically across all area cards,
+// no matter which other controls a room has. See issue #201.
 const CONTROL_DOMAINS = [
-  'light',
-  'fan',
   'switch',
+  'fan',
   'cover-shutter',
   'cover-blind',
   'cover-curtain',
@@ -27,6 +33,7 @@ const CONTROL_DOMAINS = [
   'cover-door',
   'cover-window',
   'cover-damper',
+  'light',
 ] as const;
 
 type ControlDomain = (typeof CONTROL_DOMAINS)[number];
@@ -58,7 +65,13 @@ function getAreaControls(areaId: string, hass: HomeAssistant): ControlDomain[] {
     }
   }
 
-  return [...found];
+  // Return in canonical CONTROL_DOMAINS order, not entity-iteration order.
+  // Set preserves insertion order in JS, which depends on the order entities
+  // happened to be added — that varies between areas (because the entity
+  // registry returns entities in registration order), so without an explicit
+  // sort, two areas with the same control mix could produce shortcut icons
+  // in different orders. See issue #201.
+  return CONTROL_DOMAINS.filter((d) => found.has(d));
 }
 
 // Alert-relevant binary sensor device classes.
@@ -69,12 +82,22 @@ const ALERT_DEVICE_CLASSES = new Set([
   'smoke', 'gas', 'heat', 'cold', 'safety', 'tamper', 'vibration',
 ]);
 
+// Window/door alerts are gated by a separate toggle (show_window_alerts_on_areas)
+// because they're less universally desired — many users have permanent contact
+// sensors on doors that they don't want as constant "alerts" on the overview.
+const WINDOW_ALERT_DEVICE_CLASSES = new Set(['window', 'door', 'opening', 'garage_door']);
+
 /**
  * Pre-computes which binary sensor alert classes exist in this area.
  * Only returns device classes from the allowlist that have at least one
  * binary_sensor entity, so the area card doesn't scan all entities at render time.
  */
-function getAreaAlertClasses(areaId: string, hass: HomeAssistant): string[] {
+function getAreaAlertClasses(
+  areaId: string,
+  hass: HomeAssistant,
+  includeStandardAlerts: boolean,
+  includeWindowAlerts: boolean
+): string[] {
   const areaEntities = Registry.getVisibleEntitiesForArea(areaId);
   if (areaEntities.length === 0) return [];
 
@@ -86,7 +109,9 @@ function getAreaAlertClasses(areaId: string, hass: HomeAssistant): string[] {
 
     const state = hass.states[entity.entity_id];
     const deviceClass = state?.attributes?.device_class as string | undefined;
-    if (deviceClass && ALERT_DEVICE_CLASSES.has(deviceClass)) found.add(deviceClass);
+    if (!deviceClass) continue;
+    if (includeStandardAlerts && ALERT_DEVICE_CLASSES.has(deviceClass)) found.add(deviceClass);
+    else if (includeWindowAlerts && WINDOW_ALERT_DEVICE_CLASSES.has(deviceClass)) found.add(deviceClass);
   }
 
   return [...found];
@@ -99,6 +124,10 @@ function getAreaAlertClasses(areaId: string, hass: HomeAssistant): string[] {
  */
 function buildAreaCard(area: AreaRegistryEntry, hass: HomeAssistant): LovelaceCardConfig {
   const controls = getAreaControls(area.area_id, hass);
+  const areaOptions = Reflect.get(Registry.config.areas_options ?? {}, area.area_id) as AreaOptions | undefined;
+  const requestedDisplayType: AreaDisplayType =
+    areaOptions?.display_type ?? Registry.config.area_display_type ?? 'compact';
+  const displayType: AreaDisplayType = requestedDisplayType === 'picture' && area.picture ? 'picture' : 'compact';
 
   // Only include sensor_classes that are configured on the area (like HA does)
   const sensorClasses: string[] = [];
@@ -109,15 +138,23 @@ function buildAreaCard(area: AreaRegistryEntry, hass: HomeAssistant): LovelaceCa
     sensorClasses.push('humidity');
   }
 
-  // Pre-filter alert classes if enabled
-  const alertClasses = Registry.config.show_alerts_on_areas
-    ? getAreaAlertClasses(area.area_id, hass)
+  // Pre-filter alert classes if enabled. Window/door classes are gated by a
+  // separate toggle so users can opt into open-window badges independently.
+  const showAlerts = Registry.config.show_alerts_on_areas === true;
+  const showWindowAlerts = Registry.config.show_window_alerts_on_areas === true;
+  const alertClasses = showAlerts || showWindowAlerts
+    ? getAreaAlertClasses(area.area_id, hass, showAlerts, showWindowAlerts)
     : undefined;
+
+  // Entry-point parity with the room view's nav tab: the card follows the
+  // room view's view_visible_users rule (runtime user condition — display
+  // logic; the room view stays reachable via URL).
+  const userConditions = userVisibilityConditions(getViewVisibleUsers(Registry.config, area.area_id));
 
   return {
     type: 'area',
     area: area.area_id,
-    display_type: 'compact',
+    display_type: displayType,
     sensor_classes: sensorClasses.length > 0 ? sensorClasses : undefined,
     alert_classes: alertClasses && alertClasses.length > 0 ? alertClasses : undefined,
     features: controls.length > 0 ? [{ type: 'area-controls', controls }] : [],
@@ -125,7 +162,20 @@ function buildAreaCard(area: AreaRegistryEntry, hass: HomeAssistant): LovelaceCa
     navigation_path: area.area_id,
     vertical: false,
     grid_options: { columns: 'full' },
+    ...(userConditions ? { visibility: userConditions } : {}),
   };
+}
+
+/**
+ * Union user condition for a heading above a group of area cards: hides
+ * for users who can't see ANY of the areas beneath it (one unrestricted
+ * area keeps the heading unconditional).
+ */
+function areaHeadingVisibility(areas: AreaRegistryEntry[]): { visibility: LovelaceCondition[] } | Record<string, never> {
+  const conditions = userVisibilityConditions(
+    unionVisibleUsers(areas.map((area) => getViewVisibleUsers(Registry.config, area.area_id)))
+  );
+  return conditions ? { visibility: conditions } : {};
 }
 
 /**
@@ -149,21 +199,26 @@ function getFloorIcon(level: number | null | undefined): string {
 export function createAreasSection(
   visibleAreas: AreaRegistryEntry[],
   groupByFloors: boolean = false,
-  hass: HomeAssistant | null = null
-): LovelaceSectionConfig | LovelaceSectionConfig[] {
+  hass: HomeAssistant | null = null,
+  hideAreasHeading: boolean = false,
+  hideAreasOtherHeading: boolean = false
+): LovelaceSectionConfig | LovelaceSectionConfig[] | null {
+  // Auto-hide: no visible areas → no section at all (not a lonely heading)
+  if (visibleAreas.length === 0) return null;
+
   // No floor grouping: flat list
   if (!groupByFloors || !hass) {
-    return {
-      type: 'grid',
-      cards: [
-        {
-          type: 'heading',
-          heading_style: 'title',
-          heading: localize('sections.areas'),
-        },
-        ...visibleAreas.map((area) => buildAreaCard(area, hass as HomeAssistant)),
-      ],
-    };
+    const cards: LovelaceCardConfig[] = [];
+    if (!hideAreasHeading) {
+      cards.push({
+        type: 'heading',
+        heading_style: 'title',
+        heading: localize('sections.areas'),
+        ...areaHeadingVisibility(visibleAreas),
+      });
+    }
+    for (const area of visibleAreas) cards.push(buildAreaCard(area, hass as HomeAssistant));
+    return { type: 'grid', cards };
   }
 
   // Group areas by floor
@@ -204,6 +259,7 @@ export function createAreasSection(
           heading_style: 'title',
           heading: floorName,
           icon: floorIcon,
+          ...areaHeadingVisibility(areas),
         },
         ...areas.map((area) => buildAreaCard(area, hass)),
       ],
@@ -212,18 +268,18 @@ export function createAreasSection(
 
   // Areas without a floor
   if (areasWithoutFloor.length > 0) {
-    sections.push({
-      type: 'grid',
-      cards: [
-        {
-          type: 'heading',
-          heading_style: 'title',
-          heading: localize('sections.areas_other'),
-          icon: 'mdi:home-outline',
-        },
-        ...areasWithoutFloor.map((area) => buildAreaCard(area, hass)),
-      ],
-    });
+    const cards: LovelaceCardConfig[] = [];
+    if (!hideAreasOtherHeading) {
+      cards.push({
+        type: 'heading',
+        heading_style: 'title',
+        heading: localize('sections.areas_other'),
+        icon: 'mdi:home-outline',
+        ...areaHeadingVisibility(areasWithoutFloor),
+      });
+    }
+    for (const area of areasWithoutFloor) cards.push(buildAreaCard(area, hass));
+    sections.push({ type: 'grid', cards });
   }
 
   return sections;

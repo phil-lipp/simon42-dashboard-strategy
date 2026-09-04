@@ -8,7 +8,7 @@
 import { Registry } from '../Registry';
 import type { HomeAssistant } from '../types/homeassistant';
 import type { AreaRegistryEntry, EntityRegistryEntry } from '../types/registries';
-import type { AreasDisplay } from '../types/strategy';
+import { DEFAULT_STACKS_ORDER, type AreasDisplay, type StackKey } from '../types/strategy';
 
 // -- Module-level RegExp caches (shared across all calls) -------------
 
@@ -192,4 +192,36 @@ export function sortByLastChanged(a: string, b: string, hass: HomeAssistant): nu
   const dateA = new Date(stateA.last_changed).getTime();
   const dateB = new Date(stateB.last_changed).getTime();
   return dateB - dateA; // Newest first
+}
+
+/**
+ * Comparator: sort entities alphabetically by friendly name (fallback:
+ * entity_id). Locale-aware compare so umlauts sort naturally.
+ */
+export function sortByFriendlyName(a: string, b: string, hass: HomeAssistant): number {
+  const stateA = Reflect.get(hass.states as Record<string, unknown>, a) as { attributes?: { friendly_name?: string } } | undefined;
+  const stateB = Reflect.get(hass.states as Record<string, unknown>, b) as { attributes?: { friendly_name?: string } } | undefined;
+  const nameA = stateA?.attributes?.friendly_name || a;
+  const nameB = stateB?.attributes?.friendly_name || b;
+  return nameA.localeCompare(nameB);
+}
+
+function mergeConfiguredOrder<T extends string>(stored: T[] | undefined, defaults: readonly T[]): T[] {
+  if (!stored || stored.length === 0) return [...defaults];
+
+  const validKeys = new Set(defaults);
+  const seen = new Set<T>();
+  const known: T[] = [];
+
+  for (const key of stored) {
+    if (!validKeys.has(key) || seen.has(key)) continue;
+    known.push(key);
+    seen.add(key);
+  }
+
+  return [...known, ...defaults.filter((key) => !seen.has(key))];
+}
+
+export function mergeStacksOrder(stored?: StackKey[]): StackKey[] {
+  return mergeConfiguredOrder(stored, DEFAULT_STACKS_ORDER);
 }

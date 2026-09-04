@@ -27,7 +27,8 @@ import { setupLocalize } from './utils/localize';
  * any other access.
  *
  * Reads directly from hass.entities/devices/areas (synchronous, no WebSocket
- * calls). All members are static, all maps are built once on initialize().
+ * calls). All members are static; maps are built on initialize() and rebuilt
+ * only when the hass registries change (reference compare).
  */
 class Registry {
   // Prevent instantiation
@@ -82,11 +83,25 @@ class Registry {
   /** Entities with the "no_dboard" label — excluded from all dashboard views */
   private static _excludeSet: Set<string>;
 
-  /** Entities hidden via areas_options.*.groups_options.*.hidden in config */
+  /**
+   * Entities hidden via areas_options.*.groups_options.*.hidden in config.
+   * The 'badges' pseudo-group is excluded — deselecting a badge must not
+   * hide the entity dashboard-wide (#396).
+   */
   private static _hiddenFromConfig: Set<string>;
 
   /** Initialization flag */
   private static _initialized: boolean = false;
+
+  /**
+   * Reset the Registry singleton between tests so each test starts with a
+   * clean slate. Production code never calls this — the singleton lives for
+   * the lifetime of the dashboard. Exported so vitest test files can clear
+   * cross-test state without using vi.resetModules() (which is expensive).
+   */
+  static resetForTesting(): void {
+    Registry._initialized = false;
+  }
 
   // =====================================================================
   // Initialization
@@ -95,10 +110,16 @@ class Registry {
   /**
    * Initialize the registry from hass object and strategy config.
    * Synchronous — reads directly from hass.entities/devices/areas.
-   * Idempotent: skips if already initialized.
+   * Idempotent while the hass registry references are unchanged. When HA
+   * regenerates the strategy after a registry change (new/renamed entities,
+   * devices, areas, floors), the changed reference triggers a full rebuild —
+   * otherwise views would keep serving the snapshot from the first page load.
+   * The config is deliberately NOT part of the staleness check: standalone
+   * view strategies pass `config.config || {}` (a fresh object per call),
+   * which would clobber the dashboard config on every generate.
    */
   static initialize(hass: HomeAssistant, config: Simon42StrategyConfig): void {
-    if (Registry._initialized) return;
+    if (Registry._initialized && !Registry._registriesChanged(hass)) return;
 
     timeStart('registry-init');
     Registry._hass = hass;
@@ -131,6 +152,21 @@ class Registry {
       `Registry initialized: ${Registry._fetchedEntities.length} entities, ${Registry._fetchedDevices.length} devices, ${Registry._fetchedAreas.length} areas`
     );
     timeEnd('registry-init');
+  }
+
+  /**
+   * Whether the hass registries have changed since the last initialize().
+   * HA replaces the registry collections on hass (immutable updates), so a
+   * reference compare is sufficient and cheap — same pattern the SummaryCard
+   * uses for its entity cache invalidation.
+   */
+  private static _registriesChanged(hass: HomeAssistant): boolean {
+    return (
+      hass.entities !== Registry._hass.entities ||
+      hass.devices !== Registry._hass.devices ||
+      hass.areas !== Registry._hass.areas ||
+      hass.floors !== Registry._hass.floors
+    );
   }
 
   // =====================================================================
@@ -275,6 +311,7 @@ class Registry {
    * Exclusion pipeline (matches the JS data-collectors logic):
    * 1. no_dboard label -> _excludeSet
    * 2. areas_options.*.groups_options.*.hidden -> _hiddenFromConfig
+   *    (except the 'badges' pseudo-group, which only affects room badges)
    */
   private static _buildExclusionSets(): void {
     // no_dboard label exclusion
@@ -291,7 +328,12 @@ class Registry {
     if (areasOptions) {
       for (const areaOpts of Object.values(areasOptions)) {
         if (areaOpts.groups_options) {
-          for (const groupOpts of Object.values(areaOpts.groups_options)) {
+          for (const [groupKey, groupOpts] of Object.entries(areaOpts.groups_options)) {
+            // The 'badges' pseudo-group only deselects auto-detected room
+            // badges — it must NOT hide the entity dashboard-wide (#396).
+            // RoomViewStrategy applies badges.hidden itself when building
+            // the badge list (see applyBadgeGroupOptions).
+            if (groupKey === 'badges') continue;
             if (groupOpts.hidden && Array.isArray(groupOpts.hidden)) {
               for (const id of groupOpts.hidden) {
                 Registry._hiddenFromConfig.add(id);

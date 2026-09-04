@@ -25,9 +25,11 @@ src/
 │   ├── badge-builder.ts             #   Person badge creation
 │   └── view-builder.ts              #   View generation (overview, utility, area views)
 ├── sections/
+│   ├── section-registry.ts          #   SINGLE SOURCE OF TRUTH for overview sections (pure data — no builder imports!)
 │   ├── OverviewSection.ts           #   Clock, alarm, search, summaries, favorites
 │   ├── AreasSection.ts              #   Area cards (with optional floor grouping)
-│   └── WeatherEnergySection.ts      #   Weather forecast + energy distribution
+│   ├── WeatherEnergySection.ts      #   Weather forecast + energy distribution
+│   └── *Section.ts                  #   Opt-in sections (Plants, Agenda, Todos, Persons, Vacuums, Maintenance)
 ├── cards/                           # LitElement custom cards (reactive, tile card pooling)
 │   ├── SummaryCard.ts               #   Reactive summary tiles (lights, covers, security, batteries, climate)
 │   ├── LightsGroupCard.ts           #   On/off light grouping (heading badges + tile card pool + floor grouping)
@@ -39,11 +41,15 @@ src/
 │   ├── SecurityViewStrategy.ts      #   Security overview (locks, doors, windows, garages, smoke/gas detectors)
 │   ├── BatteriesViewStrategy.ts     #   Battery status (critical/low/ok)
 │   └── ClimateViewStrategy.ts       #   Climate/thermostat overview (heating/cooling/idle/off)
-└── editor/                          # Configuration UI
-    ├── StrategyEditor.ts            #   Editor class (largest file — config form, state management)
-    ├── editor-handlers.ts           #   Event listeners, drag/drop area reordering
-    ├── editor-template.ts           #   HTML template generation
-    └── editor-styles.ts             #   CSS styling
+└── editor/                          # Configuration UI (module split, #355)
+    ├── StrategyEditor.ts            #   Host element: state, config plumbing, render() skeleton
+    ├── editor-host.ts               #   StrategyEditorHost interface — the contract panels program against
+    ├── editor-styles.ts             #   CSS styling
+    ├── entity-options.ts            #   Pure entity-picker helpers (+ stateFor())
+    └── panels/                      #   One module per panel: renderX(host) functions
+        ├── panel-shell.ts           #   Collapsible card shell w/ icon header + localStorage state (#354)
+        ├── AreasPanel.ts            #   Per-area editor (largest; incl. entity cache + area helpers)
+        └── *.ts                     #   Overview, Summaries, SectionOrder, StackOrder, Favorites, ...
 ```
 
 Output:
@@ -132,6 +138,17 @@ Many entity properties exist ONLY in the Entity Registry, NOT in state attribute
 - **Entity-level**: areas_options.{areaId}.groups_options.{domain}.hidden
 - **Special**: room_pin_entities, alarm_entity, favorite_entities, custom_views
 
+### Adding a New Overview Section
+
+Overview sections are driven by `src/sections/section-registry.ts` (single source of truth). To add one:
+
+1. Create the builder in `src/sections/<Name>Section.ts` (return `LovelaceSectionConfig | null`, `null` = auto-hide)
+2. Add ONE entry to `SECTION_REGISTRY` (key, icon, labelKey, optional visibility toggle) — its position defines the default order
+3. Wire the builder into `SECTION_BUILDERS` in `views/OverviewViewStrategy.ts`
+4. Add i18n keys (`sections.<key>` + editor texts) in `translations/{de,en,ru}.json`
+
+The `SectionKey` type, default order, editor drag & drop panel, visibility toggle, per-section visibility rules and `target_section` dropdown all derive from the registry entry — no editor changes needed. **Important:** `section-registry.ts` must stay pure data (no builder imports), otherwise the lazy editor chunk would pull in all section builders (see Chunk Architecture below).
+
 ## Complexity Hotspots
 
 These files require extra care — changes here most likely cause regressions:
@@ -158,6 +175,21 @@ npm run build-dev   # Development (source maps)
 npm run watch       # Dev + auto-rebuild on file changes
 ```
 
+## Codacy Pitfalls (CI blocks on "high" findings)
+
+- **No `const fn = () => ...` arrow function assignments** — Biome's Qwik rule false-positives on them ("Non-serializable expression must be wrapped with $(...)"). Use `function` declarations instead. Applies to src AND test files, and to **function-local** const arrows too, not just module level (hit repeatedly, latest in #336).
+- No `any` in new signatures (`Record<string, unknown>` over `Record<string, any>`)
+- No dynamic `obj[variable]` lookups on config objects — use `Map`/`Reflect.get` (detect-object-injection). **`hass.states[someVar]` in new/changed lines counts too** — use the `stateFor()`/`Reflect.get` helpers.
+- **Always bind the catch parameter in async functions**: `catch (error: unknown)` — Codacy's security-node rule doesn't know optional catch binding (`catch {`).
+- Codacy's API can report ghost findings pinned to lines that no longer block the quality gate — when a finding looks inexplicable, check the PR check status first instead of contorting the code.
+- **The quality gate is `issueThreshold: 0`** — EVERY new finding blocks, Warning severity included, and **moved lines count as new lines** (refactor PRs get fully rescanned). Budget for this before large moves.
+- **Reproduce the type-aware rules locally instead of API whack-a-mole:** temporary eslint flat config with `parserOptions.project` enabling `@typescript-eslint/no-unnecessary-condition` + `no-non-null-assertion`, run on the touched files. One pass finds everything (the PR-issues API paginates at 100 and hides findings).
+- **Record-type lookups lie** (`tsconfig` has no `noUncheckedIndexedAccess`): `no-unnecessary-condition` demands removing `?.` on `Record` values that CAN be absent at runtime (e.g. `groups_options.badges`). Do NOT drop the guard — rewrite as `Reflect.get(obj, key) as T | undefined` so the condition stays type-honest. Only drop `?.`/fallbacks where the API really guarantees presence (`hass.states[x].attributes`, `hass.areas/devices/entities`, `EntityRegistryEntry.labels` — HA floor 2024.7).
+- Array index access `arr[i]` also triggers detect-object-injection — use `arr.at(i)` (lib ES2022) + `splice(i, 1, next)` for writes.
+- `xss/no-mixed-html` and `@typescript-eslint/no-confusing-void-expression` are file-level disabled in `src/editor/**` (mass false positives on lit-html / house-style event arrows); a no-op stub plugin in `eslint.config.mjs` keeps the directives valid locally. The `.codacy.yml` engine switch (adopted from oriel-dashboard) is currently NOT honored by our Codacy setup — disabling the legacy ESLint8 engine in the Codacy UI would supersede the inline disables.
+- Semgrep flags `yaml.load()` as RCE — false positive for js-yaml v4 (safe schema by default); suppress with `// nosemgrep` on the call line.
+- Findings without auth: `https://app.codacy.com/api/v3/analysis/organizations/gh/TheRealSimon42/repositories/simon42-dashboard-strategy/pull-requests/<N>/issues` (paginated via `cursor`!)
+
 ## Git & Release Workflow
 
 **Never commit directly to `main`.** Always use feature branches.
@@ -165,29 +197,26 @@ npm run watch       # Dev + auto-rebuild on file changes
 ### Feature Development
 1. `git checkout -b feature/<name>` from `main`
 2. Develop, build, test on live system
-3. **Commit all files — source AND `dist/`!** HACS serves the `dist/` files from the tagged commit
+3. **Source only — `dist/` is gitignored and never committed.** HACS serves the built files as release assets (see Release Automation below); old tags (≤ v1.3.4-beta.9) still carry their committed `dist/`
 4. `git push -u origin feature/<name>`
-5. Create PR from feature branch → `main` (triggers HACS validation workflow)
-6. Wait for CI to pass, then merge
-7. Delete feature branch (local + remote)
+5. Create PR from feature branch → `main` (triggers validation workflows: translation lint, build + bundle check. NOTE: hacs/action cannot be used here — it validates the branch TREE only and the tree deliberately has no `dist/`; real HACS installs from release assets instead)
+6. **PR titles must be Conventional Commits** (`feat: …`, `fix: …`, `feat(scope)!: …`, `chore: …`) — squash merges make the PR title the commit message, and release-please derives version bumps and CHANGELOG entries from it. `feat`/`fix` trigger a release; `chore`/`docs`/`ci`/`refactor` don't. Runtime-relevant dependency bumps should therefore be merged as `fix(deps): …`, not `chore(deps): …`, or they never reach a release
+7. Wait for CI to pass, then merge
+8. Delete feature branch (local + remote)
 
-### Beta Releases
-- Beta versions are tagged as **Pre-Release** on GitHub (e.g. `v1.3.0-beta.1`)
-- Each beta builds on the previous one — everything flows into `main`
-- Increment beta number: `beta.1` → `beta.2` → `beta.3`
-- When stable: tag `v1.3.0` as a regular release
-- **Minor bump** (`v1.3.0`) for new features, **patch bump** (`v1.2.1`) for pure bugfixes
+### Release Automation (release-please, since #353; dist/ removal history: #190)
 
-### Version Checklist (before every release/beta)
+Releases are cut by **release-please** — no manual version bumps, no manual CHANGELOG edits, no manual tags:
 
-The following locations must be updated for a new version:
+1. On every push to `main`, `release-please.yml` maintains a permanent **Release PR** (runs under the `simon42-release-bot` GitHub App — GITHUB_TOKEN events don't trigger workflows, see the workflow header). The PR bumps `package.json`, `package-lock.json` and `STRATEGY_VERSION` (via the `// x-release-please-version` marker — **never remove that comment**) and writes the CHANGELOG entry from the Conventional-Commit squash titles since the last release
+2. Merging the Release PR makes release-please **publish** the (pre-)release directly. No draft: GitHub delivers no `release` workflow events for drafts, and release-please doesn't count drafts as released (learned the hard way on beta.13 — stalled pipeline + phantom next-version PR)
+3. `release-build.yml` fires on `release: published`, builds, verifies (`verify-release-version.mjs`, `verify-release-bundle.mjs`) and uploads all `dist/*.js` (+ `.gz`/`.br`/LICENSE) files as individual assets. The release is asset-less for the ~2 minutes the build takes — a HACS poll in that window fails once and self-heals
+4. HACS installs tagged versions from the release assets. `hide_default_branch: true` in `hacs.json` prevents installing `main`, which has no `dist/`
 
-| File | Field | Example |
-|------|-------|---------|
-| `package.json` | `"version"` | `"1.3.0"` |
-| `src/simon42-dashboard-strategy.ts` | `STRATEGY_VERSION` | `'1.3.0-beta.5'` |
-| `package-lock.json` | updated automatically via `npm install` | — |
-| **Git tag** | create on release | `v1.3.0-beta.5` or `v1.3.0` |
+- **Do not create GitHub releases or tags manually.** The legacy tag-push workflows are removed — with direct publishing, the App-token tag push would have double-triggered them
+- Versioning is configured in `release-please-config.json`. During a beta cycle: `"versioning": "prerelease"` + `"prerelease-type": "beta"` increment `beta.N` on every `feat`/`fix`
+- **Cutting the stable release** (e.g. `v1.4.0`): flip `"prerelease"` to `false` and `"versioning"` to `"default"` in `release-please-config.json`; if the proposed version isn't the wanted one, force it with a `Release-As: 1.4.0` footer in an empty `chore` commit. Afterwards flip back for the next beta cycle
+- **Repair path**: build failed on a published release → `gh workflow run release-build.yml -f tag=vX.Y.Z`; failed while still draft → "Re-run failed jobs" on the workflow run
 
 **Important:** `STRATEGY_VERSION` is logged to the browser console — useful for asking users which version they have installed.
 
@@ -298,5 +327,6 @@ Local reference copies for architecture and pattern lookup (sparse checkouts, re
 | `../references/ha-strategies/` | `home-assistant/frontend` → `src/panels/lovelace/strategies/` | Official HA strategies (TypeScript, architecture reference) |
 | `../references/mushroom-strategy/` | `DigiLive/mushroom-strategy` | Community dashboard strategy (TypeScript + build pipeline reference) |
 | `../references/hacs-docs/` | `hacs/documentation` → `source/docs/publish/` | HACS publishing documentation (hacs.json options, release handling) |
+| `../references/ha-dev-blog/` | `home-assistant/developers.home-assistant` → `blog/` | HA developer blog (frontend/API changes per release — check when aligning with new HA versions) |
 
 **HA Release Notes (Markdown)**: `https://github.com/home-assistant/home-assistant.io/blob/rc/source/_posts/` — Blog posts in MD format. Example for April 2026: `2026-04-01-release-20264.markdown`. Useful for checking which HA features/changes are current and whether issues have become obsolete due to HA updates.

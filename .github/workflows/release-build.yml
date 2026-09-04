@@ -1,0 +1,93 @@
+name: Release Build
+
+# Builds dist/ and attaches the JS assets to a release published by
+# release-please.
+#
+# Trigger 1 (`release: published`): release-please publishes its releases
+# directly (no draft — LESSON from the first live run: GitHub does NOT
+# deliver `release` workflow events for draft releases at all, and
+# release-please does not count drafts as released, so the draft design
+# stalled the pipeline and spawned a phantom next-version release PR).
+# Consequence: a just-published release is asset-less for the ~2 minutes
+# this build takes; a HACS poll in that window fails once and self-heals.
+#
+# Trigger 2 (`workflow_dispatch`): repair path — rebuild and re-attach assets
+# for an already-published release/tag.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Published release tag to rebuild assets for (e.g. v1.4.0-beta.13)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build + attach dist assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine ref + tag
+        id: ref
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+            echo "ref=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+            echo "ref=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.ref.outputs.ref }}
+          fetch-depth: 0
+
+      - name: Ensure release commit is on main
+        # Full fetch: a shallow tip (--depth=1) breaks merge-base when main
+        # has moved past the tagged commit (e.g. a follow-up merge landed
+        # between tagging and this build).
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor HEAD origin/main
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # verify-release-version.mjs checks package.json == STRATEGY_VERSION and
+      # (only on tag refs) the tag name. Drafts run off a branch/SHA ref, so
+      # assert tag == v<package.json version> explicitly here for both paths.
+      - name: Verify version consistency
+        run: |
+          node scripts/verify-release-version.mjs
+          pkg=$(node -p "require('./package.json').version")
+          if [ "${{ steps.ref.outputs.tag }}" != "v$pkg" ]; then
+            echo "::error::Release tag ${{ steps.ref.outputs.tag }} does not match package.json v$pkg"
+            exit 1
+          fi
+
+      - name: Verify built bundle references
+        run: node scripts/verify-release-bundle.mjs
+
+      # gh resolves draft releases by their tag_name even though the git tag
+      # doesn't exist yet. --clobber makes the repair path idempotent.
+      - name: Upload assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ steps.ref.outputs.tag }}" \
+            dist/*.js dist/*.js.gz dist/*.js.br dist/*.js.LICENSE.txt \
+            --clobber -R "${{ github.repository }}"

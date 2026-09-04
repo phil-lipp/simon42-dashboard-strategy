@@ -52,21 +52,37 @@ Wenn dir die simon42 Dashboard Strategy hilft, unterstütze die Weiterentwicklun
 - **Automatische Raum-Erkennung** — Nutzt Home Assistant Areas, Devices & Floors
 - **Spezialisierte Views** — Lichter, Rollos, Sicherheit, Batterien, Klima — jeweils mit Status-Gruppierung
 - **Zusammenfassungskarten** — Einzeln ein-/ausschaltbar für Lichter, Rollos, Sicherheit, Batterien und Klima
-- **Etagen-Gruppierung** — Bereiche und Lichter optional nach Etagen gliedern
+- **Abschnitts-Reihenfolge** — Sections der Übersicht per Drag & Drop sortieren *(ab v1.3.5)*
+- **Zusätzliche Sections** — Pflanzen, Agenda, To-dos, Personen, Staubsauger, Wartung — alle opt-in, mit Auto-Hide *(ab v1.4.0)*
+- **Bedingte Sichtbarkeit** — Sections und Raum-Views nur bei bestimmtem Entity-Zustand anzeigen (z.B. Agenda nur an Werktagen) *(ab v1.4.0)*
+- **Header-Badges** — Optionale Live-Badges: Stromverbrauch, nicht verfügbare Entitäten, Now Playing, Sonnenstand, anstehende Updates *(ab v1.4.0)*
+- **Etagen-Gruppierung** — Bereiche, Lichter und Rollos optional nach Etagen gliedern
 - **Favoriten** — Beliebige Entitäten als Kacheln auf der Übersicht anpinnen
 - **Alarm-Panel** — Optionale Alarmanlage neben der Uhr
-- **Granulare Filterung** — Per Label (`no-dboard`), pro Bereich, pro Domain, pro Entity
+- **Granulare Filterung** — Per Label (`no-dboard` fürs Dashboard, `no_seclog` fürs Sicherheits-Logbuch), pro Bereich, pro Domain, pro Entity
 - **Teiloffene Rollos** — Optionale dritte Gruppe (Offen / Teiloffen / Geschlossen) mit Live-Übergängen
 - **Alert-Icons** — Optionale Alert-Badges auf Bereichskarten (Bewegung, Feuchtigkeit, Rauch, Wärme u.a.)
-- **Rauch- & Gasmelder** — In der Sicherheits-Übersicht, im Security-Summary-Count und als Badges in Raum-Views
+- **Rauch-, Gas- & Hitzemelder** — In der Sicherheits-Übersicht, im Security-Summary-Count und als Badges in Raum-Views
+- **Wetter flexibel** — Wetter-Entität wählbar, Darstellung umschaltbar (Forecast täglich/stündlich, Tile, eigene Karte), eigene Außensensoren als Inline-Zeile *(ab v1.4.0)*
+- **Sicherheits-Ansicht im HA-Style** — Alle Bereiche untereinander (nach Etagen), Aktivitäts-Verlauf (24h-Logbuch) als Seitenleiste oder Section, Kameras opt-in *(ab v1.4.0)*
+- **Kamera-Ansicht (CCTV, experimentell)** — Opt-in View mit allen Kameras: Scheinwerfer-Steuerung, PTZ-Steuerkreuz und Aufnahmen-Link (Reolink), LLM Vision Ereignis-Timelines *(ab v1.4.0)*
+- **Pollenflug-Karte (DWD)** — Aktuelle Pollenbelastung unter der Wetterkarte, automatisch erkannt via HACS-Integration *(ab v1.4.0)*
 - **Batch-Aktionen** — Heading-Badges für Gruppensteuerung (alle ein/aus, alle öffnen/schließen)
 - **Automationen & Skripte in Räumen** — Bereichs-zugeordnete Automationen und Skripte in Raum-Views anzeigen
-- **Eigene Karten** — Beliebige Karten via YAML auf der Übersicht einbinden
+- **Raum-Blöcke sortierbar** — Reihenfolge der automatisch erzeugten Blöcke (Kameras, Lichter, Klima, …) pro Raum per Drag & Drop *(ab v1.4.0)*
+- **USV- & Energie-Blöcke in Räumen** — opt-in: erkannte USVs mit Akku-Gauge, Energie-/Wasser-/Gas-Sensoren als eigener Block *(ab v1.4.0)*
+- **Kamera-Karte mit Live-Toggle** — opt-in: Raum-Kameras starten als Standbild, Live-Stream per Play/Stopp-Button *(ab v1.4.0)*
+- **Räume in der Navigation pinnen** — einzelne Raum-Views bleiben als Tab sichtbar, auch wenn Raum-Views sonst Subviews sind *(ab v1.4.0)*
+- **Nicht verfügbare Entitäten ausblenden** — opt-in: Karten und Badges mit `unavailable`/`unknown` verschwinden dynamisch *(ab v1.4.0)*
+- **Eigene Karten** — Beliebige Karten via YAML auf der Übersicht einbinden, Ziel-Section frei wählbar
+- **Eigene Sections** — Komplette eigene Section-Blöcke auf der Übersicht deklarieren, frei positionierbar *(ab v1.4.0)*
 - **Eigene Badges** — Beliebige Badges via YAML im Header (neben Personen-Chips)
 - **Custom Views** — Eigene Dashboard-Views mit beliebigen Cards via YAML
 - **Reaktive Updates** — Echtzeit-Aktualisierung via LitElement Custom Cards
-- **Mehrsprachig** — Deutsch und Englisch, automatische Erkennung aus HA-Einstellungen, Fallback auf Englisch
+- **Mehrsprachig** — Deutsch, Englisch und Russisch, automatische Erkennung aus HA-Einstellungen, Fallback auf Englisch
 - **Performance-optimiert** — Code-Split Bundles, Registry-Caching, Tile-Card-Pooling
+
+> **Versions-Hinweis:** Features ohne Vermerk sind seit v1.3.x oder länger enthalten. Neuere Features tragen ein *(ab vX.Y)* — die vollständige Zuordnung aller Optionen steht in der [Konfigurationsreferenz](#alle-optionen-referenz).
 
 ## Installation
 
@@ -179,6 +195,16 @@ Die Hauptseite des Dashboards zeigt eine Übersicht mit folgenden Bereichen:
 
 **Uhr & Alarm** — Die Uhr wird standardmäßig angezeigt. Optional kann eine Alarmanlage daneben eingeblendet werden.
 
+**Haus-Modus** *(ab v1.4.0)* — Optional erscheint direkt über dem Uhr/Alarm-Block ein Dropdown (Tile-Karte mit nativem `select-options`-Feature), das einen selbst angelegten `input_select`- oder `select`-Helfer anzeigt und schaltet — auch dann, wenn keine Alarmanlage konfiguriert ist. Die Strategy legt den Helfer **nicht** selbst an; du definierst die Modi selbst (Einstellungen → Geräte & Dienste → Helfer → Auswahl). Beispiel-Helfer `input_select.hausmodus` mit den Optionen „Smart Home", „Gast" und „Babysitter":
+
+```yaml
+strategy:
+  type: custom:simon42-dashboard
+  house_mode_entity: input_select.hausmodus
+```
+
+Automations-Idee: Anwesenheits-Automationen zusätzlich auf den Modus bedingen — z.B. laufen Abwesenheits-Aktionen nur, wenn `input_select.hausmodus` auf „Smart Home" steht. Ist ein Babysitter im Haus (Modus „Babysitter"), bleiben sie aus, obwohl die Bewohner weg sind.
+
 **Zusammenfassungen** — Kacheln die den Status aller Lichter, Rollos, Sicherheits-Entitäten, Batterien und Klimageräte zusammenfassen. Jede Zusammenfassung kann einzeln ein- oder ausgeschaltet werden. Das Layout ist als 2-Spalten-Grid (Standard) oder 4-Spalten-Reihe konfigurierbar. Für Rollos kann optional eine **Teiloffen-Gruppe** aktiviert werden, die Rollos mit Position zwischen 1-99% separat anzeigt — inkl. Live-Übergängen während des Fahrens.
 
 <p align="center">
@@ -193,11 +219,43 @@ Die Hauptseite des Dashboards zeigt eine Übersicht mit folgenden Bereichen:
 
 **Info-Karten** — Optionale Wetter- und Energie-Karten auf der Übersicht.
 
+**Abschnitts-Reihenfolge** *(ab v1.3.5)* — Alle Sections der Übersicht lassen sich im Editor per Drag & Drop sortieren. Abschaltbare Sections haben direkt im Panel einen Ein/Aus-Toggle. Leere Sections werden automatisch ausgeblendet.
+
+**Zusätzliche Sections** *(ab v1.4.0)* — Sechs optionale Sections für die Übersicht, alle standardmäßig aus und mit Auto-Hide (erscheinen nur, wenn passende Entitäten existieren):
+
+| Section | Inhalt |
+|---------|--------|
+| Pflanzen | Alle `plant.*`-Entitäten als Kacheln |
+| Agenda | Anstehende Kalender-Termine (Kalender wählbar) |
+| To-dos | Einträge aus `todo.*`-Listen (Listen wählbar) |
+| Personen | Personen-Karten mit Anwesenheit |
+| Staubsauger | Saugroboter & Mähroboter mit Status |
+| Wartung | Anstehende Updates & niedrige Batterien auf einen Blick |
+
+**Bedingte Sichtbarkeit** *(ab v1.4.0)* — Jede Section (und jede Raum-View) kann an einen Entity-Zustand geknüpft werden. Beispiel: Agenda nur an Werktagen anzeigen:
+
+```yaml
+strategy:
+  type: custom:simon42-dashboard
+  section_visibility:
+    agenda:
+      entity: binary_sensor.workday_sensor
+      state: "on"
+```
+
+**Header-Badges** *(ab v1.4.0)* — Optionale Live-Badges neben den Personen-Chips: aktueller Stromverbrauch (Sensor wählbar), Anzahl nicht verfügbarer Entitäten, gerade spielende Medien, Sonnenauf-/-untergang und anstehende Updates. Alle standardmäßig aus, alle mit Auto-Hide. Die Personen-Chips selbst sind konfigurierbar (Layout mit/ohne Status und Zeitangabe) oder komplett abschaltbar — z.B. um sie durch eigene Badges zu ersetzen.
+
 **Favoriten** — Beliebige Entitäten, die als Kacheln unter den Zusammenfassungen erscheinen. Im Editor per Dropdown hinzufügen.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/TheRealSimon42/simon42-dashboard-strategy/main/assets/Favoriten-entity-hinzufügen.gif" alt="Favoriten hinzufügen" width="800" />
 </p>
+
+**Design: Theme & Hintergrundbild** *(ab v1.4.0)* — Im Editor-Panel „Design" (ganz unten) lassen sich ein Theme und ein Hintergrundbild für das gesamte Dashboard festlegen. Beides wird über die nativen View-Eigenschaften `theme` und `background` auf alle generierten Views gestempelt — Custom Views mit eigenem Theme/Hintergrund im YAML behalten ihre Einstellung. Beim Hintergrundbild sind Deckkraft und „beim Scrollen fixiert" direkt im Editor einstellbar; Größe, Ausrichtung und Wiederholung folgen sinnvollen Defaults und bleiben über den YAML-Schlüssel `background` (HA-View-Schema) anpassbar.
+
+**Nicht verfügbare Entitäten ausblenden** *(ab v1.4.0)* — Mit `hide_unavailable_entities` (Toggle im Editor) verschwinden generierte Karten und Badges dynamisch, solange ihre Entität `unavailable` oder `unknown` ist — inklusive Sections, deren Karten komplett betroffen sind, und passend nachgeführter Zusammenfassungs-Zähler. Sobald die Entität zurückkommt, erscheint alles wieder von selbst. Eigene Inhalte (`custom_cards`, `custom_sections`, `custom_views`) bleiben unangetastet.
+
+**Kompakte Anordnung der Abschnitte** *(ab v1.4.0)* — `dense_section_placement` füllt Lücken im Raster aller generierten Ansichten auf (dichte Anordnung). Abschnitte können dadurch von der konfigurierten Reihenfolge abweichen — deshalb opt-in.
 
 ### Bereiche & Räume
 
@@ -225,9 +283,55 @@ Die Hauptseite des Dashboards zeigt eine Übersicht mit folgenden Bereichen:
 
 **Raum-Pins** — Spezielle Entitäten die in ihren zugeordneten Räumen ganz oben erscheinen. Ideal für Entitäten die nicht automatisch erkannt werden (z.B. Wetterstationen).
 
+**Eigene Sections in Räumen** *(ab v1.4.0)* — Analog zu den eigenen Sections auf der Übersicht lassen sich auch in jeder Raum-Ansicht eigene Section-Blöcke einfügen: im Editor beim jeweiligen Bereich („Eigene Sections in diesem Raum"), mit komplettem Section-Code als YAML (siehe [Eigene Sections](#eigene-sections-ab-v140)) und wählbarer Position — **oberhalb** oder **unterhalb** der automatisch erzeugten Sections. Damit lassen sich z.B. spezielle Karten aus HACS (Versatile Thermostat, Saugroboter-Karten, …) direkt im Raum unterbringen. Tipp: Wer die Standard-Kachel einer Entität ersetzen will, blendet sie in der Domain-Gruppe des Raums aus und fügt die eigene Karte als Section hinzu.
+
 **Automationen & Skripte** — Optional können dem Bereich zugeordnete Automationen und Skripte in den Raum-Views angezeigt werden. Beide Optionen sind separat aktivierbar und standardmäßig aus.
 
-**Fenster- & Türkontakte** — Optional können Fensterkontakte und Türkontakte als Badges in den Raum-Views angezeigt werden. Zwei getrennte Toggles im Editor, standardmäßig aus. Absolute Luftfeuchtigkeit (z.B. von der Thermal Comfort Integration, `g/m³`) wird automatisch als Badge erkannt.
+**Fenster- & Türkontakte** — Fensterkontakte und Türkontakte erscheinen als Badges in den Raum-Views (standardmäßig an, per zwei getrennten Toggles im Editor abschaltbar). Absolute Luftfeuchtigkeit (z.B. von der Thermal Comfort Integration, `g/m³`) wird automatisch als Badge erkannt.
+
+**Kameras in Räumen** *(ab v1.4.0)* — Kameras in den Raum-Views sind standardmäßig an und können per Toggle deaktiviert werden. Optional (`camera_live_toggle`) startet die Kamera-Karte als Standbild und wechselt erst per **Play/Stopp-Button** in den Live-Stream — das spart Bandbreite und Last auf Wandtablets; Kameras ohne Standbild-Unterstützung (z.B. Aqara) starten dabei automatisch im Live-Modus. Standardmäßig verhalten sich die Kameras wie gewohnt (automatisch aktualisierte Vorschau).
+
+**Reihenfolge der Raum-Blöcke** *(ab v1.4.0)* — Die automatisch erzeugten Blöcke einer Raum-Ansicht (Kameras, Lichter, Schlösser, Klima, Rollos, Medien, Szenen, Sonstiges, …) lassen sich pro Raum per Drag & Drop sortieren: im Editor beim jeweiligen Bereich unter „Reihenfolge der Raum-Blöcke". In der Config landet das als `areas_options.{bereich}.stacks_order`. Nicht vorhandene Blöcke werden als inaktive Chips angezeigt; `room_pins_first` wird weiterhin berücksichtigt, solange keine eigene Reihenfolge gesetzt ist.
+
+**USV-Block** *(ab v1.4.0, opt-in)* — `show_ups_in_rooms` zeigt pro erkannter USV einen eigenen Block mit Akku-Gauge (Schwellwerte folgen den Batterie-Einstellungen) und den zugehörigen Sensoren. Die Erkennung ist bewusst konservativ: dedizierte USV-Integrationen (NUT, apcupsd) oder Geräte mit „USV"/„UPS" im Namen. Einzelne Sensoren lassen sich über die USV-Gruppe im Bereichs-Editor ausblenden.
+
+**Energie-Block** *(ab v1.4.0, opt-in)* — `show_energy_in_rooms` zeigt die Leistungs-, Energie-, Wasser- und Gas-Sensoren eines Bereichs als eigenen Block in der Raum-Ansicht.
+
+**Räume in der Navigation pinnen** *(ab v1.4.0)* — Sind Raum-Views als Subviews konfiguriert (`show_room_views: false`), lassen sich einzelne Räume per Pin-Button in der Bereichsliste des Editors trotzdem dauerhaft in der oberen Navigation halten (`areas_display.nav_items`).
+
+**Aktivitäts-Verlauf in der Sicherheits-Ansicht** *(ab v1.4.0)* — Wie im Home Assistant Security-Panel zeigt ein 24-Stunden-Logbuch die Aktivität aller Sicherheits-Entitäten und Personen. Die Darstellung folgt dem Layout der Ansicht: Im **Kategorien-Modus** (Standard) erscheint der Verlauf als normale Section an erster Stelle (per Checkbox alternativ ans Ende). Im **HA-Style-Modus** (`group_security_by_areas`) stehen alle Bereiche wie im Home Assistant Security-Panel untereinander — nach Etagen gruppiert, Bereichs-Überschriften führen in die Raum-Ansicht — und der Verlauf hängt als Seitenleiste rechts daneben (eigener Tab auf schmalen Bildschirmen). Entitäten mit dem Label **`no_seclog`** bleiben in der Ansicht sichtbar, tauchen aber nicht im Verlauf auf — z.B. innenliegende Türkontakte, deren Historie dort nur Rauschen wäre. Standardmäßig an; entfällt automatisch, wenn die Logbuch-Integration nicht geladen ist, und lässt sich per `show_security_activity: false` abschalten. Einzelne Kameras lassen sich zusätzlich für die **Sicherheits- und Kamera-Ansicht** abwählen (`hidden_cameras`, Checkboxen im Editor) — die Raum-Ansichten bleiben davon unberührt.
+
+**Sicherheits-Ansicht zeigt auch ausgeblendete Bereiche** *(ab v1.4.0)* — Bereiche, die auf der Übersicht ausgeblendet sind (`areas_display.hidden`), erscheinen trotzdem in der Sicherheits-Ansicht: Ein Schloss im ausgeblendeten Treppenhaus bleibt sichtbar — in beiden Layouts, samt Kameras. Im Bereichs-Layout werden solche Bereiche als normale Bereichs-Abschnitte einsortiert (ohne Link in die nicht vorhandene Raum-Ansicht). Wer das alte Verhalten möchte, setzt `hide_hidden_areas_in_security: true` (Checkbox im Editor) — dann werden ausgeblendete Bereiche konsequent aus beiden Sicherheits-Layouts und den Kamera-Karten (Sicherheits- und Kamera-Ansicht) gefiltert. Übersicht und Raum-Ansichten bleiben von der Option unberührt.
+
+**Kameras in der Sicherheits-Ansicht** *(ab v1.4.0)* — Mit `show_cameras_in_security` erscheinen die Kameras als kompakte Standbild-Karten in der Sicherheits-Ansicht — dem Vorbild von Home Assistants Security-Panel folgend (dort gehören Kameras zu Alarm, Schlössern und Kontakten). Die Sicherheits-Ansicht erfasst außerdem dieselben Melder-Klassen wie HAs Panel — inklusive Sicherheitsstatus-Sensoren (`safety`, z.B. von Versatile Thermostat), Manipulations- (`tamper`) und CO-Meldern. Einzelne Kameras blendet man wie gewohnt aus (Label `no-dboard` oder die Kamera-Gruppe im Bereichs-Editor — wirkt überall).
+
+**Kamera-Ansicht (CCTV)** *(ab v1.4.0, **experimentell** — Details können sich noch ändern)* — Eine eigene Ansicht (`/cameras`, opt-in via `show_camera_view`) mit einem Block pro Kamera-**Gerät**:
+
+- **Kamerabild** — bei mehreren Streams pro Gerät (Reolink: Klar-/Standardauflösung) wird automatisch die Standardauflösung gewählt (bandbreitenschonend). Kein Live-Zwang: Standbilder mit Klick für Live-Stream.
+- **Scheinwerfer** — hat das Kamera-Gerät ein Licht, erscheint darunter eine Kachel (mit Helligkeitsregler, wenn unterstützt).
+- **PTZ-Steuerkreuz** — bei Reolink-PTZ-Kameras werden die Steuer-Buttons (Auf/Ab/Links/Rechts/Stopp, Zoom, Kalibrieren, Startposition) automatisch erkannt und als Steuerkreuz gerendert. Es erscheinen nur Buttons, die das Gerät wirklich hat.
+- **Aufnahmen** — bei Reolink-Kameras führt ein Button direkt zu den Aufnahmen der Kamera im HA-Medienbrowser (bei NVRs mit mehreren Kanälen zur Reolink-Übersicht, falls der Kanal nicht eindeutig zuordenbar ist).
+- **Ereignis-Timelines** *(separater Toggle `show_camera_events`, Standard aus)* — mit [LLM Vision](https://llmvision.org) samt Timeline-Karte lassen sich drei Timelines (Personen / Tiere / Fahrzeuge) am Ende der Ansicht einblenden. **Hinweis:** Die llmvision-card fragt ihre Ereignisse bei jeder Zustandsänderung neu ab — auf Systemen mit vielen Entitäten kann das spürbare Last erzeugen, daher bewusst opt-in.
+
+Einzelne Kameras lassen sich wie üblich ausblenden (Label `no-dboard` oder Bereichs-Editor).
+
+**Raum-Sichtbarkeit** *(ab v1.4.0)* — Einzelne Raum-Views (inkl. Navigations-Tab) können an einen Entity-Zustand geknüpft werden (`room_visibility`) — z.B. Gästezimmer nur bei aktiviertem Gäste-Modus. Die Bereichskarte auf der Übersicht bleibt davon unberührt.
+
+**Sichtbarkeit pro Benutzer** *(ab v1.4.0)* — Im Editor-Panel „View-Sichtbarkeit" legst du pro View und pro Übersichts-Section (z.B. Wetter, Energie, eigene Sections) fest, welche HA-Benutzer sie sehen (`view_visible_users` / `section_visible_users`). Versteckt werden der Navigations-Tab, die zugehörigen Einstiegspunkte auf der Übersicht (Zusammenfassungs-Kacheln, Bereichskarten samt Überschriften) bzw. die Section selbst — ausgewertet zur Laufzeit pro angemeldetem Benutzer.
+
+> ⚠️ **Das ist kein echter Zugriffsschutz.** Views bleiben über ihre URL erreichbar — die Regeln steuern nur die Anzeige. Nach Änderungen an den Regeln die Browser-Seite neu laden.
+
+> 💡 **Es tauchen nicht alle Benutzer auf?** Der Picker listet nur Personen, deren Person-Eintrag mit einem HA-Benutzerkonto verknüpft ist. Das HA-UI kann beim Aktivieren von „Anmeldung erlauben" nur ein *neues* Konto anlegen — ein *bestehendes* Konto verknüpfst du nachträglich per WebSocket-Call (als Admin in der Browser-Konsole auf einem HA-Tab):
+> ```js
+> const hass = document.querySelector("home-assistant").hass;
+> const users = await hass.callWS({type: "config/auth/list"});
+> console.table(users.map(u => ({id: u.id, name: u.name, username: u.username})));
+> const persons = await hass.callWS({type: "person/list"});
+> const p = persons.storage.find(p => p.id === "DEINE_PERSON_ID");
+> // WICHTIG: device_trackers immer mitschicken — sonst leert HA die Geräteliste der Person!
+> await hass.callWS({type: "person/update", person_id: p.id,
+>   user_id: "USER_ID_AUS_DER_TABELLE", device_trackers: p.device_trackers});
+> ```
 
 **Ansichten** — Summary-Views (Lichter, Rollos, etc.) und Raum-Views können optional in der oberen Navigation angezeigt werden.
 
@@ -254,6 +358,32 @@ content: "Willkommen zuhause!"
   <img src="https://raw.githubusercontent.com/TheRealSimon42/simon42-dashboard-strategy/main/assets/Eigene-Karten-hinzufugen.gif" alt="Eigene Karten hinzufügen" width="800" />
 </p>
 
+#### Eigene Sections *(ab v1.4.0)*
+
+Komplette eigene Section-Blöcke auf der Übersicht — die Lücke zwischen „Karte in bestehende Section einfügen" (Eigene Karten) und „ganze View anlegen" (Custom Views). Jede eigene Section hat einen Key und den **kompletten Section-Code als YAML** — exakt das, was der Raw-Editor eines beliebigen Dashboards für eine Section anzeigt. Einfach kopieren und einfügen:
+
+```yaml
+# Ins YAML-Feld der eigenen Section (Editor → Eigene Sections):
+type: grid
+cards:
+  - type: heading
+    heading: Guten Morgen
+    icon: mdi:weather-sunrise
+  - type: markdown
+    content: "Kaffee ist fertig!"
+```
+
+Weil der Section-Code 1:1 durchgereicht wird, funktionieren auch alle **Section-Optionen von Home Assistant** — z.B. `visibility:` (die Section verschwindet zur Laufzeit mitsamt Überschrift, sobald die Bedingung nicht erfüllt ist) oder `column_span:`. Die Überschrift ist eine normale `heading`-Karte im YAML — ob und wie es eine gibt, entscheidest du. Wer nur eine einzelne Karte oder eine Kartenliste einfügt (ohne `type: grid`-Wrapper), bekommt sie automatisch in eine Section verpackt — kein Paste schlägt fehl. *(Bis v1.4.0-beta.11 nahm das Feld nur Karten plus separate Überschrift/Icon-Felder — solche Bestands-Configs funktionieren unverändert weiter.)*
+
+Der `key` verhält sich wie eine eingebaute Section:
+
+- **Positionierbar** — erscheint im Abschnitts-Reihenfolge-Panel (Drag & Drop) bzw. in `sections_order`
+- **Ziel für eigene Karten** — als `target_section` wählbar (Dropdown im Editor)
+- **Bedingte Sichtbarkeit** — funktioniert in `section_visibility` (z.B. Routine-Section nur an Werktagen); zustandsabhängiges Ein-/Ausblenden zur Laufzeit geht direkt im Section-YAML über HAs `visibility:`
+- **Auto-Hide** — ohne Karten wird die Section nicht gerendert
+
+**Key-Regeln:** Keys, die mit eingebauten Sections kollidieren (`overview`, `areas`, `weather`, …), werden verworfen; bei doppelten Keys gewinnt der erste Eintrag. Empfehlung: ein persönliches Präfix wie `my_` verwenden — sollte eine spätere Version eine gleichnamige eingebaute Section einführen, behält deine eigene Section Vorrang (Config-Stabilität geht vor neuem Feature).
+
 #### Eigene Badges
 
 Beliebige Badges via YAML zum Header der Übersicht hinzufügen — sie erscheinen neben den Personen-Chips.
@@ -270,6 +400,53 @@ entity: sun.sun
 <p align="center">
   <img src="https://raw.githubusercontent.com/TheRealSimon42/simon42-dashboard-strategy/main/assets/Custom-Badges-hinzufugen.gif" alt="Eigene Badges hinzufügen" width="800" />
 </p>
+
+#### Wetter & Energie anpassen *(ab v1.4.0)*
+
+**Wetter-Entität & Darstellung** — Im Editor (unterhalb der Wetter-Section im Reihenfolge-Panel) lässt sich die Wetter-Entität explizit auswählen (Standard: automatische Erkennung) und die Darstellung umschalten: Forecast täglich (Standard), stündlich, zweimal täglich, kompakte Tile-Karte oder „keine eingebaute Karte" für komplett eigene Gestaltung.
+
+Die `weather`- und `energy`-Sections der Übersicht akzeptieren `custom_cards` über `target_section` (siehe Eigene Karten). Standardmäßig erscheinen die eingefügten Karten unterhalb der eingebauten Karte. Wer die Section komplett selbst gestalten möchte, unterdrückt die eingebaute Karte — die Section (Überschrift + Slot für eigene Karten) bleibt erhalten. So lässt sich z.B. die Energie-Karte durch eine eigene ersetzen (power-flow-card-plus & Co.):
+
+```yaml
+strategy:
+  type: custom:simon42-dashboard
+  weather_presentation: none            # keine eingebaute Wetter-Karte
+  show_energy_distribution_card: false  # eingebaute energy-distribution-Karte ausblenden
+  custom_cards:
+    - target_section: weather
+      parsed_config:
+        type: custom:clock-weather-card
+        entity: weather.openweathermap
+    - target_section: energy
+      parsed_config:
+        type: custom:power-flow-card-plus
+        # ... deine Energiekarten-Konfiguration
+```
+
+Für eine kompakte Live-Anzeige eigener Außen-Sensoren (Temperatur, Luftfeuchte, Wind, …) gibt es `weather_sensors`. Die Einträge werden als Icon + Wert + Einheit oben in der Wetter-Section gerendert — ohne zusätzliche Card-Chrome. Ideal als Ergänzung zur Forecast-Karte oder als alleinige Anzeige bei `show_weather_forecast_card: false`.
+
+```yaml
+strategy:
+  type: custom:simon42-dashboard
+  weather_sensors:
+    - entity: sensor.outdoor_temperature
+      icon: mdi:thermometer
+      unit: "°C"
+      round: 1
+    - entity: sensor.outdoor_humidity
+      icon: mdi:water-percent
+      unit: "%"
+    - entity: sensor.wind_speed
+      icon: mdi:weather-windy
+      unit: "km/h"
+      round: 1
+```
+
+Pro Eintrag:
+- `entity` — Sensor-Entity-ID (Pflicht; Format `domain.object_id`)
+- `icon` — MDI-Icon (Standard: `mdi:gauge`)
+- `unit` — angehängte Einheit als Text (z.B. `°C`, `km/h`)
+- `round` — Anzahl Nachkommastellen für numerische Werte; weglassen für rohen Zustand
 
 #### Custom Views
 
@@ -289,6 +466,13 @@ sections:
   <img src="https://raw.githubusercontent.com/TheRealSimon42/simon42-dashboard-strategy/main/assets/Custom-View-hinzufugen.gif" alt="Custom View hinzufügen" width="800" />
 </p>
 
+**Views aus anderen Dashboards referenzieren** *(ab v1.4.0)* — Statt YAML zu kopieren, kann eine Custom View auch eine View aus einem anderen Dashboard **per Referenz** einbinden (Button „View aus Dashboard referenzieren"). Die View wird bei jedem Laden live aus dem Quell-Dashboard übernommen — Änderungen dort erscheinen automatisch auch im Simon42-Dashboard, ganz ohne Copy & Paste. Dashboard und View werden per Dropdown gewählt; Titel, Pfad und Icon werden automatisch vorbefüllt und bleiben anpassbar.
+
+Zu wissen:
+- Dashboards, die selbst von einer Strategy generiert werden (auch dieses), können nicht referenziert werden — sie haben keine gespeicherten Views.
+- Wird die referenzierte View oder das Quell-Dashboard gelöscht, zeigt die View eine verständliche Fehlerkarte statt eines Fehlers — die Referenz lässt sich dann im Editor korrigieren.
+- Die Sichtbarkeit der referenzierten View folgt dem Simon42-Dashboard: Wer dieses Dashboard sehen darf, sieht auch die referenzierte View — unabhängig von der Sichtbarkeit des Quell-Dashboards.
+
 ### Entity-Filterung
 
 Entitäten können auf mehreren Ebenen gefiltert werden:
@@ -303,49 +487,165 @@ Entitäten können auf mehreren Ebenen gefiltert werden:
 
 ### Alle Optionen (Referenz)
 
+Die Spalte **Seit** gibt an, ab welcher Version die Option verfügbar ist. „—" bedeutet: seit v1.3.x oder länger.
+
 <details>
 <summary>Vollständige Konfigurationsreferenz aufklappen</summary>
 
-| Option | Typ | Standard | Beschreibung |
-|--------|-----|----------|-------------|
-| `show_clock_card` | boolean | `true` | Uhr auf der Übersicht |
-| `alarm_entity` | string | — | Alarm-Panel Entity neben der Uhr |
-| `show_search_card` | boolean | `false` | Such-Karte (benötigt custom:search-card) |
-| `show_light_summary` | boolean | `true` | Lichter-Zusammenfassung |
-| `show_covers_summary` | boolean | `true` | Rollo-Zusammenfassung |
-| `show_security_summary` | boolean | `true` | Sicherheits-Zusammenfassung |
-| `show_climate_summary` | boolean | `false` | Klima-Zusammenfassung |
-| `use_better_thermostat_ui_card` | boolean | `false` | Better Thermostat UI Card statt Kacheln |
-| `better_thermostat_card_variant` | `normal` \| `mini` | `normal` | Layout der Better Thermostat UI Card |
-| `show_battery_summary` | boolean | `true` | Batterie-Zusammenfassung |
-| `summaries_columns` | 2 \| 4 | `2` | Spalten-Layout der Zusammenfassungen |
-| `hide_mobile_app_batteries` | boolean | `false` | Mobile-App-Batterien ausblenden |
-| `battery_critical_threshold` | number | `20` | Schwellwert für kritische Batterien (%) |
-| `battery_low_threshold` | number | `50` | Schwellwert für niedrige Batterien (%) |
-| `show_weather` | boolean | `true` | Wetter-Karte |
-| `show_energy` | boolean | `true` | Energie-Dashboard |
-| `favorite_entities` | string[] | `[]` | Favoriten-Entitäten auf der Übersicht |
-| `group_by_floors` | boolean | `false` | Bereiche nach Etagen gliedern |
-| `show_partially_open_covers` | boolean | `false` | Teiloffene Rollos separat anzeigen |
-| `show_alerts_on_areas` | boolean | `false` | Alert-Icons auf Bereichskarten |
-| `show_locks_in_rooms` | boolean | `false` | Schlösser in Raum-Views |
-| `show_automations_in_rooms` | boolean | `false` | Automationen in Raum-Views |
-| `show_scripts_in_rooms` | boolean | `false` | Skripte in Raum-Views |
-| `show_window_contacts_in_rooms` | boolean | `false` | Fensterkontakte als Badges in Raum-Views |
-| `show_door_contacts_in_rooms` | boolean | `false` | Türkontakte als Badges in Raum-Views |
-| `use_default_area_sort` | boolean | `false` | HA-Sortierung für Bereiche verwenden |
-| `areas_display.hidden` | string[] | `[]` | Ausgeblendete Bereiche |
-| `areas_display.order` | string[] | `[]` | Reihenfolge der Bereiche |
-| `areas_options` | object | `{}` | Entity-Filterung pro Bereich |
-| `room_pin_entities` | string[] | `[]` | Raum-Pin Entitäten |
-| `show_summary_views` | boolean | `false` | Summary-Views in Navigation |
-| `show_room_views` | boolean | `false` | Raum-Views in Navigation |
-| `group_lights_by_floors` | boolean | `false` | Lichter nach Etagen gruppieren |
-| `custom_cards` | object[] | `[]` | Eigene Karten via YAML |
-| `custom_cards_heading` | string | `"Eigene Karten"` | Überschrift der Custom Cards Section |
-| `custom_cards_icon` | string | `"mdi:cards"` | Icon der Custom Cards Section |
-| `custom_badges` | object[] | `[]` | Eigene Badges im Header via YAML |
-| `custom_views` | object[] | `[]` | Eigene Views via YAML |
+**Übersicht & Zusammenfassungen**
+
+| Option | Typ | Standard | Seit | Beschreibung |
+|--------|-----|----------|------|-------------|
+| `show_clock_card` | boolean | `true` | — | Uhr auf der Übersicht |
+| `alarm_entity` | string | — | — | Alarm-Panel Entity neben der Uhr |
+| `house_mode_entity` | string | — | v1.4.0 | `input_select`/`select`-Helfer als Dropdown-Tile direkt über dem Uhr/Alarm-Block |
+| `show_search_card` | boolean | `false` | — | Such-Karte auf der Übersicht |
+| `search_card_variant` | `custom` \| `tip` | `custom` | v1.4.0 | `custom` benötigt custom:search-card aus HACS; `tip` ist ein HA-nativer Hinweis auf die globale Suche |
+| `show_light_summary` | boolean | `true` | — | Lichter-Zusammenfassung |
+| `show_light_view` | boolean | `false` | v1.4.0 | Licht-Unterseite (/lights) auch ohne Licht-Zusammenfassung bereitstellen |
+| `show_covers_summary` | boolean | `true` | — | Rollo-Zusammenfassung |
+| `show_covers_view` | boolean | `false` | v1.4.0 | Rollo-Unterseite (/covers) auch ohne Rollo-Zusammenfassung bereitstellen |
+| `show_partially_open_covers` | boolean | `false` | — | Teiloffene Rollos separat anzeigen |
+| `show_security_summary` | boolean | `true` | — | Sicherheits-Zusammenfassung |
+| `show_security_view` | boolean | `false` | v1.4.0 | Sicherheits-Unterseite (/security) auch ohne Sicherheits-Zusammenfassung bereitstellen |
+| `show_cameras_in_security` | boolean | `false` | v1.4.0 | Kameras als kompakte Karten in der Sicherheits-Ansicht (Überschrift verlinkt zur Kamera-Ansicht, falls aktiviert) |
+| `group_security_by_areas` | boolean | `false` | v1.4.0 | HA-Style-Layout: alle Bereiche untereinander (nach Etagen), Aktivität als Seitenleiste |
+| `hide_hidden_areas_in_security` | boolean | `false` | v1.4.0 | Ausgeblendete Bereiche (`areas_display.hidden`) auch aus der Sicherheits-Ansicht und den Kamera-Karten filtern; standardmäßig zeigt die Sicherheits-Ansicht alles |
+| `show_security_activity` | boolean | `true` | v1.4.0 | Aktivitäts-Verlauf (24h-Logbuch) in der Sicherheits-Ansicht; entfällt automatisch ohne Logbuch-Integration |
+| `security_activity_position` | `start` \| `end` | `start` | v1.4.0 | Aktivitäts-Section an erster (Standard) oder letzter Stelle (nur Kategorien-Modus) |
+| `hidden_cameras` | string[] | `[]` | v1.4.0 | Kameras aus Sicherheits- UND Kamera-Ansicht ausblenden (Checkboxen im Editor; Raum-Ansichten unberührt) |
+| `show_climate_summary` | boolean | `false` | — | Klima-Zusammenfassung |
+| `use_better_thermostat_ui_card` | boolean | `false` | fork | Better Thermostat UI Card statt nativer Thermostat-Kacheln (HACS v3+) |
+| `better_thermostat_card_variant` | `normal` \| `mini` | `normal` | fork | Layout der Better Thermostat UI Card |
+| `show_climate_view` | boolean | `false` | v1.4.0 | Klima-Unterseite (/climate) auch ohne Klima-Zusammenfassung bereitstellen |
+| `show_battery_summary` | boolean | `true` | — | Batterie-Zusammenfassung |
+| `show_battery_view` | boolean | `false` | v1.4.0 | Batterie-Unterseite (/batteries) auch ohne Batterie-Zusammenfassung bereitstellen |
+| `show_camera_view` | boolean | `false` | v1.4.0 | **Experimentell:** Kamera-Ansicht (/cameras) mit Scheinwerfer, PTZ-Steuerung und Aufnahmen-Link (siehe unten) |
+| `show_camera_events` | boolean | `false` | v1.4.0 | LLM Vision Ereignis-Timelines in der Kamera-Ansicht (Last-Hinweis siehe unten) |
+| `summaries_columns` | 2 \| 4 | `2` | — | Spalten-Layout der Zusammenfassungen |
+| `favorite_entities` | string[] | `[]` | — | Favoriten-Entitäten auf der Übersicht |
+| `favorites_show_state` | boolean | `false` | — | Zustand auf Favoriten-Kacheln anzeigen |
+| `favorites_hide_last_changed` | boolean | `false` | — | „Zuletzt geändert" auf Favoriten ausblenden |
+| `light_favorite_entities` | string[] | `[]` | v1.4.0 | Schnellzugriffs-Reihe für Lieblingslampen auf der Übersicht |
+| `hide_unavailable_entities` | boolean | `false` | v1.4.0 | Karten/Badges mit `unavailable`/`unknown` dynamisch ausblenden — gilt für alle generierten Ansichten, eigene Inhalte bleiben unberührt |
+| `theme` | string | — | v1.4.0 | Theme-Name, der auf alle Views gestempelt wird (native View-Eigenschaft `theme`) |
+| `background` | object | — | v1.4.0 | Hintergrundbild für alle Views im HA-View-Schema (`image`, `opacity`, `attachment`, `size`, `alignment`, `repeat`) |
+| `dense_section_placement` | boolean | `false` | v1.4.0 | Lücken im Raster aller generierten Ansichten auffüllen (Abschnitte können von der konfigurierten Reihenfolge abweichen) |
+
+**Sections & Reihenfolge**
+
+| Option | Typ | Standard | Seit | Beschreibung |
+|--------|-----|----------|------|-------------|
+| `sections_order` | string[] | Standard-Reihenfolge | v1.3.5 | Reihenfolge der Übersichts-Sections (im Editor per Drag & Drop) |
+| `hidden_section_headings` | string[] | `[]` | v1.4.0 | Überschriften einzelner Sections ausblenden |
+| `section_visibility` | object | `{}` | v1.4.0 | Sections nur bei bestimmtem Entity-Zustand anzeigen (siehe oben) |
+| `show_weather` | boolean | `true` | — | Wetter-Section |
+| `weather_entity` | string | auto | v1.4.0 | Explizite Wetter-Entität (Standard: automatische Erkennung) |
+| `weather_presentation` | string | `forecast_daily` | v1.4.0 | Darstellung: `forecast_daily`, `forecast_hourly`, `forecast_twice_daily`, `tile`, `none` |
+| `show_weather_forecast_card` | boolean | `true` | v1.4.0 | Legacy — durch `weather_presentation` abgelöst, wird weiter berücksichtigt |
+| `show_pollen_card` | boolean | `false` | v1.4.0 | DWD-Pollenflug-Karte unter der Wetterkarte (benötigt die HACS-Integration DWD Pollenflug; Toggle erscheint nur, wenn sie installiert ist) |
+| `use_clock_weather_card` | boolean | `false` | fork | Clock Weather Card statt eingebauter Wetterkarte (benötigt die HACS-Karte) |
+| `show_horizon_card` | boolean | `false` | fork | Horizon Card unter der Wetterkarte (benötigt Sun-Integration + HACS-Karte) |
+| `weather_sensors` | object[] | `[]` | v1.4.0 | Inline Icon+Wert-Zeile oben in der Wetter-Section (siehe oben) |
+| `show_energy` | boolean | `true` | — | Energie-Section |
+| `show_energy_distribution_card` | boolean | `true` | v1.4.0 | Eingebaute `energy-distribution`-Karte. Auf `false` für komplett eigene Energie-Section |
+| `energy_link_dashboard` | boolean | `true` | v1.3.5 | Energie-Karte verlinkt auf das HA-Energie-Dashboard |
+| `show_plants_section` | boolean | `false` | v1.4.0 | Pflanzen-Section (Auto-Hide ohne `plant.*`-Entitäten) |
+| `show_agenda_section` | boolean | `false` | v1.4.0 | Agenda-Section mit Kalender-Terminen |
+| `agenda_calendar_entities` | string[] | alle | v1.4.0 | Kalender für die Agenda einschränken |
+| `show_todos_section` | boolean | `false` | v1.4.0 | To-do-Section |
+| `todos_entities` | string[] | alle | v1.4.0 | To-do-Listen einschränken |
+| `show_persons_section` | boolean | `false` | v1.4.0 | Personen-Section |
+| `show_vacuums_section` | boolean | `false` | v1.4.0 | Staubsauger-/Mähroboter-Section |
+| `show_maintenance_section` | boolean | `false` | v1.4.0 | Wartungs-Section (Updates + niedrige Batterien) |
+
+**Header-Badges**
+
+| Option | Typ | Standard | Seit | Beschreibung |
+|--------|-----|----------|------|-------------|
+| `show_person_badges` | boolean | `true` | v1.4.0 | Personen-Chips im Header (auf `false` z.B. für eigene Badges) |
+| `person_badge_layout` | string | `with_state` | v1.4.0 | `minimal`, `with_state` oder `with_state_and_time` |
+| `power_badge_entity` | string | — | v1.4.0 | Live-Badge mit aktuellem Stromverbrauch (Sensor wählbar) |
+| `show_unavailable_alert_badge` | boolean | `false` | v1.4.0 | Badge mit Anzahl nicht verfügbarer Entitäten (Auto-Hide bei 0) |
+| `show_now_playing_badge` | boolean | `false` | v1.4.0 | Badge für gerade spielende Medien (Auto-Hide) |
+| `show_sun_badge` | boolean | `false` | v1.4.0 | Sonnenauf-/-untergangs-Badge (benötigt `sun.sun`) |
+| `show_updates_badge` | boolean | `false` | v1.4.0 | Badge mit Anzahl anstehender Updates (Auto-Hide bei 0) |
+| `custom_badges` | object[] | `[]` | — | Eigene Badges im Header via YAML |
+
+**Batterien**
+
+| Option | Typ | Standard | Seit | Beschreibung |
+|--------|-----|----------|------|-------------|
+| `hide_mobile_app_batteries` | boolean | `false` | — | Mobile-App-Batterien ausblenden |
+| `hide_battery_notes_entities` | boolean | `false` | v1.4.0 | Hilfs-Entitäten der Battery-Notes-Integration ausblenden |
+| `battery_critical_threshold` | number | `20` | — | Schwellwert für kritische Batterien (%) |
+| `battery_low_threshold` | number | `50` | — | Schwellwert für niedrige Batterien (%) |
+| `show_area_in_battery_view` | boolean | `false` | v1.4.0 | Bereichsnamen in der Batterie-View anzeigen |
+| `group_batteries_by_areas` | boolean | `false` | v1.4.0 | Batterien innerhalb jedes Status-Abschnitts (Kritisch/Niedrig/Gut) nach Bereichen gruppieren |
+| `unavailable_batteries_bucket` | `critical` \| `good` | `good` | v1.4.0 | Einordnung nicht erreichbarer Batterie-Sensoren |
+
+**Bereiche & Räume**
+
+**Bereichsfotos** *(ab v1.4.0)* — Mit `area_display_type: picture` (Dropdown im Editor) zeigen die Bereichskarten der Übersicht das in Home Assistant hinterlegte Bereichsfoto (Einstellungen → Bereiche → Bereich bearbeiten → Bild). Bereiche ohne Foto bleiben automatisch kompakt, und pro Bereich lässt sich die globale Einstellung überschreiben (`areas_options.{id}.display_type`, Dropdown im aufgeklappten Bereich).
+
+| Option | Typ | Standard | Seit | Beschreibung |
+|--------|-----|----------|------|-------------|
+| `group_by_floors` | boolean | `false` | — | Bereiche nach Etagen gliedern |
+| `area_display_type` | `compact` \| `picture` | `compact` | v1.4.0 | Standarddarstellung der Bereichskarten; ohne Bereichsfoto fällt `picture` auf `compact` zurück |
+| `show_alerts_on_areas` | boolean | `false` | — | Alert-Icons auf Bereichskarten |
+| `show_window_alerts_on_areas` | boolean | `false` | v1.4.0 | Offene Fenster als Alert-Icon auf Bereichskarten |
+| `show_switches_on_areas` | boolean | `false` | — | Schalter-Control auf Bereichskarten |
+| `use_default_area_sort` | boolean | `false` | — | HA-Sortierung für Bereiche verwenden |
+| `areas_display.hidden` | string[] | `[]` | — | Ausgeblendete Bereiche |
+| `areas_display.order` | string[] | `[]` | — | Reihenfolge der Bereiche |
+| `areas_options` | object | `{}` | — | Entity-Filterung pro Bereich |
+| `areas_options.{id}.display_type` | `compact` \| `picture` | globaler Wert | v1.4.0 | Überschreibt die Darstellung für eine einzelne Bereichskarte |
+| `areas_options.{id}.custom_sections` | object[] | `[]` | v1.4.0 | Eigene Section-Blöcke in der Raum-Ansicht (kompletter Section-Code, `position: top\|bottom` — siehe oben) |
+| `areas_options.{id}.stacks_order` | string[] | Standard-Reihenfolge | v1.4.0 | Reihenfolge der automatisch erzeugten Raum-Blöcke (im Editor per Drag & Drop) |
+| `areas_display.nav_items` | string[] | `[]` | v1.4.0 | Raum-Views, die trotz Subview-Modus in der Navigation bleiben (Pin-Button im Editor) |
+| `show_ups_in_rooms` | boolean | `false` | v1.4.0 | USV-Block pro erkannter USV (NUT/apcupsd oder „USV"/„UPS" im Gerätenamen) |
+| `show_energy_in_rooms` | boolean | `false` | v1.4.0 | Energie-Block (Leistung/Energie/Wasser/Gas-Sensoren) in Raum-Views |
+| `room_pin_entities` | string[] | `[]` | — | Raum-Pin Entitäten |
+| `room_pins_first` | boolean | `false` | v1.3.5 | Raum-Pins ganz oben statt unten im Raum anzeigen |
+| `room_pins_show_state` | boolean | `false` | — | Zustand auf Raum-Pin-Kacheln anzeigen |
+| `room_pins_hide_last_changed` | boolean | `false` | — | „Zuletzt geändert" auf Raum-Pins ausblenden |
+| `show_locks_in_rooms` | boolean | `false` | — | Schlösser in Raum-Views |
+| `show_cover_controls_in_rooms` | boolean | `true` | v1.4.0 | Hoch/Stopp/Runter-Sammel-Buttons an den Rollo- und Vorhang-Überschriften in Raum-Views (Fenster/Türen/Garagentore ausgenommen) |
+| `show_switches_section_in_rooms` | boolean | `false` | v1.4.0 | Schalter & smarte Steckdosen als eigener Abschnitt „Schalter & Steckdosen“ statt unter „Sonstiges“ |
+| `show_automations_in_rooms` | boolean | `false` | — | Automationen in Raum-Views |
+| `show_scripts_in_rooms` | boolean | `false` | — | Skripte in Raum-Views |
+| `show_cameras_in_rooms` | boolean | `true` | v1.4.0 | Kamera-Streams in Raum-Views |
+| `camera_live_toggle` | boolean | `false` | v1.4.0 | Raum-Kameras als Standbild mit Play/Stopp-Button statt automatischer Vorschau |
+| `show_window_contacts_in_rooms` | boolean | `true` | v1.3.5 | Fensterkontakte als Badges in Raum-Views |
+| `show_door_contacts_in_rooms` | boolean | `true` | v1.3.5 | Türkontakte als Badges in Raum-Views |
+| `hide_unavailable_in_rooms` | boolean | `true` | v1.4.0 | Nicht verfügbare Entitäten in Raum-Views ausblenden |
+| `room_visibility` | object | `{}` | v1.4.0 | Raum-Views nur bei bestimmtem Entity-Zustand anzeigen |
+| `security_extra_entities` | string[] | `[]` | v1.4.0 | Zusätzliche Entitäten für die Sicherheits-View (z.B. Backofen) |
+
+**Views & Navigation**
+
+| Option | Typ | Standard | Seit | Beschreibung |
+|--------|-----|----------|------|-------------|
+| `show_summary_views` | boolean | `false` | — | Summary-Views in Navigation |
+| `show_room_views` | boolean | `false` | — | Raum-Views in Navigation |
+| `group_lights_by_floors` | boolean | `false` | — | Lichter nach Etagen gruppieren |
+| `group_lights_by_areas` | boolean | `false` | v1.4.0 | Lichter nach Bereichen gruppieren |
+| `nested_light_groups` | boolean | `false` | v1.3.5 | Verschachtelte Lichtgruppen aufklappbar rendern |
+| `lights_sort_by` | `last_changed` \| `name` | `last_changed` | v1.4.0 | Lichter alphabetisch statt nach letzter Änderung sortieren |
+| `group_covers_by_floors` | boolean | `false` | v1.4.0 | Rollos nach Etagen gruppieren |
+| `group_covers_by_areas` | boolean | `false` | v1.4.0 | Rollos nach Bereichen gruppieren |
+| `view_visible_users` | object | `{}` | v1.4.0 | Views (Tab + Übersichts-Einstiege) nur für bestimmte HA-Benutzer anzeigen (siehe oben) |
+| `section_visible_users` | object | `{}` | v1.4.0 | Übersichts-Sections nur für bestimmte HA-Benutzer anzeigen (siehe oben) |
+
+**Eigene Inhalte**
+
+| Option | Typ | Standard | Seit | Beschreibung |
+|--------|-----|----------|------|-------------|
+| `custom_cards` | object[] | `[]` | — | Eigene Karten via YAML; `target_section` wählt die Ziel-Section (Dropdown im Editor ab v1.4.0) |
+| `custom_cards_heading` | string | `"Eigene Karten"` | — | Überschrift der Custom Cards Section |
+| `custom_cards_icon` | string | `"mdi:cards"` | — | Icon der Custom Cards Section |
+| `custom_sections` | object[] | `[]` | v1.4.0 | Eigene Section-Blöcke auf der Übersicht (Key + kompletter Section-Code als YAML — siehe oben) |
+| `custom_views` | object[] | `[]` | — | Eigene Views via YAML oder als Referenz auf eine View eines anderen Dashboards (`ref_dashboard` + `ref_view`, ab v1.4.0). Mit `after_view` (ab v1.4.0) lässt sich die View hinter einer beliebigen generierten View einsortieren — z.B. zwischen zwei Räumen (Wert = View-Pfad, etwa die Bereichs-ID; Dropdown im Editor). Ohne `after_view` erscheint sie wie bisher am Ende |
 
 </details>
 
@@ -384,12 +684,17 @@ Die Strategy erkennt automatisch die Sprache aus deinen Home Assistant Einstellu
 |---------|--------|
 | 🇩🇪 Deutsch | Vollständig |
 | 🇬🇧 English | Vollständig |
+| 🇷🇺 Русский | Vollständig *(ab v1.3.5)* |
 
 **Weitere Sprachen hinzufügen:** Erstelle eine neue Datei `src/translations/<code>.json` (z.B. `fr.json`) nach dem Muster der bestehenden Dateien und öffne einen Pull Request. Der Aufwand ist gering — es müssen nur die Strings übersetzt werden, kein Code.
 
 ## Contributing
 
 Issues und Pull Requests sind willkommen! Bitte teste PRs gründlich in einem lokalen HA-Setup.
+
+**Neue Übersichts-Section beisteuern?** Seit v1.4.0 sind die Sections registry-getrieben: Builder-Datei in `src/sections/` anlegen, einen Eintrag in `src/sections/section-registry.ts` ergänzen, den Builder in `views/OverviewViewStrategy.ts` verdrahten, Übersetzungen ergänzen — Editor-Panel, Toggle, Dropdown und Sortierung kommen automatisch. Das vollständige Rezept steht in der [CLAUDE.md](CLAUDE.md#adding-a-new-overview-section).
+
+**Mit KI-Unterstützung entwickeln?** Das Repo bringt einen Entwicklungs-Skill mit: [`.claude/skills/strategy-dev/SKILL.md`](.claude/skills/strategy-dev/SKILL.md) destilliert die Arbeitsweise, mit der diese Strategy entwickelt wird — Architektur-Leitplanken, Kreuzauswirkungs-Check, Qualitäts-Gates und die typischen Fallen. Wer mit [Claude Code](https://claude.com/claude-code) im Repo arbeitet, bekommt den Skill automatisch geladen; bei anderen KI-Tools die Datei (zusammen mit der [CLAUDE.md](CLAUDE.md)) einfach als Kontext mitgeben. Die Nutzung ist optional — sie hilft aber, dass KI-generierte PRs den Qualitätsmaßstäben des Projekts entsprechen.
 
 <details>
 <summary>Architektur</summary>
@@ -401,10 +706,10 @@ Issues und Pull Requests sind willkommen! Bitte teste PRs gründlich in einem lo
 | Chunk | Größe | Inhalt |
 |-------|-------|--------|
 | main | ~6 KB | Entry Point, Custom Element Registrierung |
-| lit | ~15 KB | Lit Framework (shared) |
-| core | ~51 KB | Registry, Utils, Translations, Overview, Custom Cards |
-| views | ~19 KB | Lichter, Rollos, Sicherheit, Batterien, Klima, Raum-Detail |
-| editor | ~110 KB | Konfigurations-UI (nur bei Bedarf geladen) |
+| lit | ~16 KB | Lit Framework (shared) |
+| core | ~125 KB | Registry, Utils, Translations, Overview, Custom Cards |
+| views | ~24 KB | Lichter, Rollos, Sicherheit, Batterien, Klima, Raum-Detail |
+| editor | ~145 KB | Konfigurations-UI (nur bei Bedarf geladen) |
 
 ### Performance-Design
 

@@ -46,11 +46,20 @@ export interface LovelaceSectionConfig {
 
 // -- Views ------------------------------------------------------------
 
+/** Sidebar of a sections view (HA 2026.x) — e.g. the activity log pane */
+export interface LovelaceViewSidebarConfig {
+  sections?: LovelaceSectionConfig[];
+  content_label?: string;
+  sidebar_label?: string;
+  visibility?: LovelaceCondition[];
+}
+
 export interface LovelaceViewConfig {
   title?: string;
   path?: string;
   icon?: string;
   type?: string;
+  theme?: string;
   subview?: boolean;
   max_columns?: number;
   dense_section_placement?: boolean;
@@ -59,6 +68,7 @@ export interface LovelaceViewConfig {
   sections?: LovelaceSectionConfig[];
   cards?: LovelaceCardConfig[];
   strategy?: LovelaceStrategyConfig;
+  sidebar?: LovelaceViewSidebarConfig;
   background?: string | LovelaceViewBackgroundConfig;
   visible?: boolean | ShowViewConfig[];
   back_path?: string;
@@ -93,8 +103,15 @@ export interface LovelaceViewHeaderConfig {
   badges_wrap?: 'wrap' | 'nowrap';
 }
 
+/** Media-selector value as stored by HA's media picker (background image). */
+export interface MediaSelectorValue {
+  media_content_id?: string;
+  media_content_type?: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface LovelaceViewBackgroundConfig {
-  image?: string;
+  image?: string | MediaSelectorValue;
   opacity?: number;
   size?: 'auto' | 'cover' | 'contain';
   alignment?: string;

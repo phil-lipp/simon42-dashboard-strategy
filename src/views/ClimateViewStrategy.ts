@@ -6,6 +6,7 @@ import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceViewConfig, LovelaceSectionConfig } from '../types/lovelace';
 import { Registry } from '../Registry';
 import { localize } from '../utils/localize';
+import { densePlacement } from '../utils/view-builder';
 import { buildClimateCard } from '../utils/climate-card-builder';
 
 class Simon42ViewClimateStrategy extends HTMLElement {
@@ -68,7 +69,7 @@ class Simon42ViewClimateStrategy extends HTMLElement {
     buildSection(idle, localize('climate.idle'), 'mdi:thermostat');
     buildSection(off, localize('climate.off'), 'mdi:power-off');
 
-    return { type: 'sections', sections };
+    return { type: 'sections', ...densePlacement(config.config || {}), sections };
   }
 }
 
