@@ -10,7 +10,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { Registry } from '../../src/Registry';
-import { createCustomCardsSection, createHouseModeCards, createOverviewSection } from '../../src/sections/OverviewSection';
+import {
+  createCustomCardsSection,
+  createHouseModeCards,
+  createOverviewSection,
+} from '../../src/sections/OverviewSection';
 import { makeHass } from '../fixtures/hass';
 
 beforeEach(() => {
@@ -63,7 +67,7 @@ describe('createCustomCardsSection', () => {
       },
     ]);
     expect(section?.cards).toEqual([
-      expect.objectContaining({ type: 'heading' }),       // section heading
+      expect.objectContaining({ type: 'heading' }), // section heading
       expect.objectContaining({ type: 'heading', heading: 'Sub-heading' }),
       expect.objectContaining({ type: 'markdown' }),
     ]);
@@ -388,5 +392,36 @@ describe('maintenance tile hide-when-ok (#426, opt-in)', () => {
       maintenance_visible_users: ['admin'],
     });
     expect(standalone.at(0)?.visibility).toEqual([{ condition: 'user', users: ['admin'] }]);
+  });
+});
+
+describe('entities summary tile', () => {
+  function summaryTypes(config: Record<string, unknown>, platform?: string): string[] {
+    const entities = platform
+      ? [{ entity_id: 'sensor.my_health', platform, state: '88' }]
+      : [{ entity_id: 'sensor.dummy', state: '1' }];
+    const hass = makeHass({ entities });
+    Registry.initialize(hass, config);
+    const section = createOverviewSection({
+      someSensorId: 'sensor.dummy',
+      showSearchCard: false,
+      config,
+      hass,
+    });
+    const types: string[] = [];
+    for (const card of section?.cards ?? []) {
+      if (card.summary_type) types.push(String(card.summary_type));
+      for (const child of card.cards ?? []) {
+        if (child.summary_type) types.push(String(child.summary_type));
+      }
+    }
+    return types;
+  }
+
+  it('stays off unless the toggle is on and a haghs sensor exists', () => {
+    expect(summaryTypes({ show_entities_summary: true })).not.toContain('entities');
+    expect(summaryTypes({ show_entities_summary: true }, 'template')).not.toContain('entities');
+    expect(summaryTypes({}, 'haghs')).not.toContain('entities');
+    expect(summaryTypes({ show_entities_summary: true }, 'haghs')).toContain('entities');
   });
 });

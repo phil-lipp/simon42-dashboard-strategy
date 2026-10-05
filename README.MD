@@ -550,6 +550,7 @@ Die Spalte **Seit** gibt an, ab welcher Version die Option verfügbar ist. „�
 | `show_battery_summary` | boolean | `true` | — | Batterie-Zusammenfassung |
 | `show_battery_view` | boolean | `false` | v1.4.0 | Batterie-Unterseite (/batteries) auch ohne Batterie-Zusammenfassung bereitstellen |
 | `show_maintenance_summary` | boolean | `false` | v1.4.0 | Wartungs-Kachel + Wartungsseite (/maintenance): anstehende Updates, nicht verfügbare Geräte, kritische Batterien, HA-Reparaturen (eingebaute Karte, HA ≥ 2026.3) |
+| `show_entities_summary` | boolean | `false` | — | Entitäten-Kachel + Ansicht (/entities) für die Integration HA Global Health Score: drei Messinstrumente (Gesamt, Hardware, Anwendung) und Zombie-Entitäten nach Domäne. Die Kachel erscheint nur, wenn der Sensor existiert |
 | `maintenance_visible_users` | string[] | `[]` | v1.4.0 | HA-Benutzer-IDs, die Wartungs-Kachel und Navigations-Tab sehen (leer = alle). Reine Anzeigelogik, kein Zugriffsschutz: die Seite bleibt per URL erreichbar |
 | `show_maintenance_activity` | boolean | `true` | v1.4.0 | Logbuch (24 h) in der Seitenleiste der Wartungsseite, beschränkt auf die dort gezeigten Entitäten; blendet sich ohne Logbuch-Integration oder ohne Befunde aus |
 | `show_video_tips` | boolean | `true` | v1.4.0 | „Expertentipps" in der Seitenleiste der Wartungsseite: passende simon42-Videos zu installierten Integrationen (statische Liste im Bundle, kein Abruf zur Laufzeit) |

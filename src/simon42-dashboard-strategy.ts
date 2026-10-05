@@ -33,6 +33,7 @@ const modulesPromise = Promise.all([
   import('./views/BatteriesViewStrategy'),
   import('./views/ClimateViewStrategy'),
   import('./views/MaintenanceViewStrategy'),
+  import('./views/EntitiesViewStrategy'),
   import('./views/CctvViewStrategy'),
   import('./views/RoomViewStrategy'),
 ]);
@@ -157,6 +158,13 @@ class Simon42DashboardStrategy extends HTMLElement {
         path: 'maintenance',
         icon: 'mdi:wrench',
         resolve: () => getStrategy('ll-strategy-simon42-view-maintenance').generate({ config }, hass),
+      },
+      {
+        enabled: config.show_entities_summary === true,
+        title: localize('views.entities'),
+        path: 'entities',
+        icon: 'mdi:shield-check',
+        resolve: () => getStrategy('ll-strategy-simon42-view-entities').generate({ config }, hass),
       },
       // alwaysInNav: no summary card deep-links here — as a subview the
       // camera view would be unreachable.

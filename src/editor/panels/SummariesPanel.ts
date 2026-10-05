@@ -428,6 +428,14 @@ export function renderSummariesSection(host: StrategyEditorHost): TemplateResult
       `
           : nothing
       }
+
+      ${host._renderCheckbox(
+        'show-entities-summary',
+        localize('editor.show_entities_summary'),
+        host._config.show_entities_summary === true,
+        (checked) => host._toggleChanged('show_entities_summary', checked, false)
+      )}
+      <div class="description">${localize('editor.show_entities_summary_desc')}</div>
   `;
 }
 

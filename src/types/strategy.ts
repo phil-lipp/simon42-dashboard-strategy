@@ -171,6 +171,10 @@ export interface Simon42StrategyConfig {
   show_battery_summary?: boolean; // default: true
   show_battery_view?: boolean; // default: false — keep the /batteries view
   // available even when show_battery_summary is off (#315: badge deep-links)
+  show_entities_summary?: boolean; // default: false — "Entities" summary
+  // tile + /entities view for the HA Global Health Score integration
+  // (registry platform "haghs"): three gauges and a zombie breakdown.
+  // The tile is omitted when that sensor does not exist.
   show_maintenance_summary?: boolean; // default: false — admin-flavoured
   // "Wartung" summary tile + /maintenance view: pending updates, unavailable
   // devices, critical batteries, HA repairs (built-in card, HA >= 2026.3)
