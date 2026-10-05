@@ -19,9 +19,7 @@ const BT_GRID_OPTIONS: Record<BetterThermostatCardVariant, LovelaceGridOptions> 
   normal: { columns: 'full', rows: 6 },
 };
 
-export function getBetterThermostatCardVariant(
-  config: Simon42StrategyConfig
-): BetterThermostatCardVariant {
+export function getBetterThermostatCardVariant(config: Simon42StrategyConfig): BetterThermostatCardVariant {
   return config.better_thermostat_card_variant === 'mini' ? 'mini' : 'normal';
 }
 
