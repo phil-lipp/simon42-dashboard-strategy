@@ -543,7 +543,20 @@
     "design_bg_image_label": "Background image",
     "design_bg_image_hint": "Pick an image via the media dialog or upload one directly. Alternatively via YAML: background.image also accepts a path/URL (e.g. /local/background.jpg); size/alignment via further background keys.",
     "design_bg_opacity_label": "Opacity",
-    "design_bg_fixed_label": "Fix background while scrolling"
+    "design_bg_fixed_label": "Fix background while scrolling",
+    "section_entity_names": "Display names",
+    "entity_names_desc": "Regular expressions that adjust entity names on the generated dashboard. Rules run in order on the name the card would already show (after area and cover-type stripping). An empty replacement removes the match. $1, $2, … insert capture groups. Custom views stay unchanged. Example: pattern ^Socket - Phillipp's  turns \"Socket - Phillipp's TV\" into \"TV\".",
+    "entity_names_pattern": "Pattern",
+    "entity_names_replace": "Replacement (empty = remove)",
+    "entity_names_flags": "Flags (i, g, m, u)",
+    "entity_names_domains": "Domains (optional, comma-separated)",
+    "entity_names_add": "Add rule",
+    "entity_names_empty": "No name rules yet.",
+    "entity_names_invalid": "Invalid regular expression",
+    "entity_names_too_long": "Pattern is longer than 200 characters",
+    "entity_names_bad_flags": "Flags may only contain i, g, m and u",
+    "entity_names_preview": "Names that would change",
+    "entity_names_preview_none": "No current entity name matches these rules."
   },
   "custom_views": {
     "ref_error_title": "Referenced view could not be loaded",

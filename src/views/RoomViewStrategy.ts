@@ -771,7 +771,7 @@ class Simon42ViewRoomStrategy extends HTMLElement {
 
     if (!groupsOptions.lights?.order) {
       if (dashboardConfig.lights_sort_by === 'name') {
-        roomEntities.lights.sort((a, b) => sortByFriendlyName(a, b, hass));
+        roomEntities.lights.sort((a, b) => sortByFriendlyName(a, b, hass, dashboardConfig.entity_name_rules));
       } else {
         roomEntities.lights.sort((a, b) => sortByLastChanged(a, b, hass));
       }
@@ -805,6 +805,11 @@ class Simon42ViewRoomStrategy extends HTMLElement {
             default_expanded: true,
             nested_groups: dashboardConfig.nested_light_groups === true,
             sort_by: dashboardConfig.lights_sort_by,
+            // Full dashboard config would also turn on hide_unavailable here.
+            // Pass only the name rules so room lights keep their current filter.
+            ...(Array.isArray(dashboardConfig.entity_name_rules) && dashboardConfig.entity_name_rules.length > 0
+              ? { config: { entity_name_rules: dashboardConfig.entity_name_rules } }
+              : {}),
           },
         ],
       });

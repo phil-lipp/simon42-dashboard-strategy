@@ -543,7 +543,20 @@
     "design_bg_image_label": "Фоновое изображение",
     "design_bg_image_hint": "Выберите изображение через медиа-диалог или загрузите напрямую. Альтернативно через YAML: background.image принимает путь/URL (например /local/background.jpg); размер/выравнивание — через другие ключи background.",
     "design_bg_opacity_label": "Непрозрачность",
-    "design_bg_fixed_label": "Зафиксировать фон при прокрутке"
+    "design_bg_fixed_label": "Зафиксировать фон при прокрутке",
+    "section_entity_names": "Отображаемые имена",
+    "entity_names_desc": "Регулярные выражения, которые меняют имена сущностей на сгенерированной панели. Правила применяются по порядку к имени, которое карточка показала бы иначе (после удаления названия зоны и типа жалюзи). Пустая замена удаляет совпадение. $1, $2, … подставляют группы. Пользовательские view не изменяются. Пример: шаблон ^Socket - Phillipp's  превращает \"Socket - Phillipp's TV\" в \"TV\".",
+    "entity_names_pattern": "Шаблон",
+    "entity_names_replace": "Замена (пусто = удалить)",
+    "entity_names_flags": "Флаги (i, g, m, u)",
+    "entity_names_domains": "Домены (необязательно, через запятую)",
+    "entity_names_add": "Добавить правило",
+    "entity_names_empty": "Правил имён пока нет.",
+    "entity_names_invalid": "Некорректное регулярное выражение",
+    "entity_names_too_long": "Шаблон длиннее 200 символов",
+    "entity_names_bad_flags": "Флаги могут содержать только i, g, m и u",
+    "entity_names_preview": "Имена, которые изменятся",
+    "entity_names_preview_none": "Ни одно текущее имя сущности не подходит под эти правила."
   },
   "custom_views": {
     "ref_error_title": "Не удалось загрузить связанную view",

@@ -543,7 +543,20 @@
     "design_bg_image_label": "Hintergrundbild",
     "design_bg_image_hint": "Bild über den Medien-Dialog wählen oder direkt hochladen. Alternativ per YAML: background.image auch als Pfad/URL (z.B. /local/hintergrund.jpg); Größe/Ausrichtung über weitere background-Schlüssel.",
     "design_bg_opacity_label": "Deckkraft",
-    "design_bg_fixed_label": "Hintergrund beim Scrollen fixieren"
+    "design_bg_fixed_label": "Hintergrund beim Scrollen fixieren",
+    "section_entity_names": "Anzeigenamen",
+    "entity_names_desc": "Reguläre Ausdrücke, die Anzeigenamen auf dem generierten Dashboard anpassen. Die Regeln laufen der Reihe nach auf dem Namen, den die Karte sonst zeigen würde (nach Bereichs- und Rollo-Kürzung). Eine leere Ersetzung entfernt den Treffer. $1, $2, … setzen Fanggruppen ein. Eigene Views bleiben unverändert. Beispiel: das Muster ^Socket - Phillipp's  macht aus \"Socket - Phillipp's TV\" nur \"TV\".",
+    "entity_names_pattern": "Muster",
+    "entity_names_replace": "Ersetzung (leer = entfernen)",
+    "entity_names_flags": "Flags (i, g, m, u)",
+    "entity_names_domains": "Domains (optional, kommagetrennt)",
+    "entity_names_add": "Regel hinzufügen",
+    "entity_names_empty": "Noch keine Namensregeln.",
+    "entity_names_invalid": "Ungültiger regulärer Ausdruck",
+    "entity_names_too_long": "Muster ist länger als 200 Zeichen",
+    "entity_names_bad_flags": "Flags dürfen nur i, g, m und u enthalten",
+    "entity_names_preview": "Namen, die sich ändern",
+    "entity_names_preview_none": "Kein aktueller Entitätsname passt auf diese Regeln."
   },
   "custom_views": {
     "ref_error_title": "Referenzierte View konnte nicht geladen werden",

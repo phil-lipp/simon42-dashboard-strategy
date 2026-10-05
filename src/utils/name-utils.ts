@@ -7,8 +7,14 @@
 
 import { Registry } from '../Registry';
 import type { HomeAssistant } from '../types/homeassistant';
+import type {
+  LovelaceBadgeConfig,
+  LovelaceCardConfig,
+  LovelaceSectionConfig,
+  LovelaceViewConfig,
+} from '../types/lovelace';
 import type { AreaRegistryEntry, EntityRegistryEntry } from '../types/registries';
-import { DEFAULT_STACKS_ORDER, type AreasDisplay, type StackKey } from '../types/strategy';
+import { DEFAULT_STACKS_ORDER, type AreasDisplay, type EntityNameRule, type StackKey } from '../types/strategy';
 
 // -- Module-level RegExp caches (shared across all calls) -------------
 
@@ -198,16 +204,14 @@ export function sortByLastChanged(a: string, b: string, hass: HomeAssistant): nu
  * Comparator: sort entities alphabetically by friendly name (fallback:
  * entity_id). Locale-aware compare so umlauts sort naturally.
  */
-export function sortByFriendlyName(a: string, b: string, hass: HomeAssistant): number {
-  const stateA = Reflect.get(hass.states as Record<string, unknown>, a) as
-    | { attributes?: { friendly_name?: string } }
-    | undefined;
-  const stateB = Reflect.get(hass.states as Record<string, unknown>, b) as
-    | { attributes?: { friendly_name?: string } }
-    | undefined;
-  const nameA = stateA?.attributes?.friendly_name || a;
-  const nameB = stateB?.attributes?.friendly_name || b;
-  return nameA.localeCompare(nameB);
+export function sortByFriendlyName(a: string, b: string, hass: HomeAssistant, rules?: EntityNameRule[]): number {
+  return sortLabel(a, hass, rules).localeCompare(sortLabel(b, hass, rules));
+}
+
+function sortLabel(entityId: string, hass: HomeAssistant, rules?: EntityNameRule[]): string {
+  const friendly = friendlyNameOf(hass, entityId) || entityId;
+  if (!rules || rules.length === 0) return friendly;
+  return applyEntityNameRules(friendly, rules, domainOf(entityId));
 }
 
 function mergeConfiguredOrder<T extends string>(stored: T[] | undefined, defaults: readonly T[]): T[] {
@@ -228,4 +232,313 @@ function mergeConfiguredOrder<T extends string>(stored: T[] | undefined, default
 
 export function mergeStacksOrder(stored?: StackKey[]): StackKey[] {
   return mergeConfiguredOrder(stored, DEFAULT_STACKS_ORDER);
+}
+
+// -- User display-name rules ------------------------------------------
+
+const MAX_NAME_RULES = 30;
+const MAX_NAME_PATTERN_LENGTH = 200;
+
+const _compiledNameRules = new Map<string, RegExp | null>();
+const _nameRuleWarnings = new Set<string>();
+
+export interface EntityNameRuleProblem {
+  code: 'too_long' | 'bad_flags' | 'invalid';
+  detail?: string;
+}
+
+function warnNameRule(key: string, message: string): void {
+  if (_nameRuleWarnings.has(key)) return;
+  _nameRuleWarnings.add(key);
+  console.warn(`[simon42] ${message}`);
+}
+
+function domainOf(entityId: string): string {
+  const dot = entityId.indexOf('.');
+  return dot === -1 ? '' : entityId.slice(0, dot);
+}
+
+function friendlyNameOf(hass: HomeAssistant, entityId: string): string | undefined {
+  const state = Reflect.get(hass.states, entityId) as { attributes?: { friendly_name?: unknown } } | undefined;
+  const name = state?.attributes?.friendly_name;
+  return typeof name === 'string' && name.length > 0 ? name : undefined;
+}
+
+function sanitizeNameRuleFlags(flags: string | undefined): string {
+  if (typeof flags !== 'string' || flags.length === 0) return '';
+  let out = '';
+  if (flags.includes('i')) out += 'i';
+  if (flags.includes('g')) out += 'g';
+  if (flags.includes('m')) out += 'm';
+  if (flags.includes('u')) out += 'u';
+  return out;
+}
+
+function flagsAreLegal(flags: string | undefined): boolean {
+  if (typeof flags !== 'string' || flags.length === 0) return true;
+  for (const ch of flags) {
+    if (ch !== 'i' && ch !== 'g' && ch !== 'm' && ch !== 'u') return false;
+  }
+  return true;
+}
+
+function compiledNameRule(pattern: string, flags: string): RegExp | null {
+  if (pattern.length > MAX_NAME_PATTERN_LENGTH) {
+    warnNameRule(
+      `len:${pattern.slice(0, 40)}`,
+      `skipping entity_name_rules pattern longer than ${MAX_NAME_PATTERN_LENGTH} characters`
+    );
+    return null;
+  }
+  const key = `${flags}\n${pattern}`;
+  if (_compiledNameRules.has(key)) return _compiledNameRules.get(key) ?? null;
+  try {
+    const regex = new RegExp(pattern, flags);
+    _compiledNameRules.set(key, regex);
+    return regex;
+  } catch (error: unknown) {
+    _compiledNameRules.set(key, null);
+    const detail = error instanceof Error ? error.message : 'invalid pattern';
+    warnNameRule(key, `skipping invalid entity_name_rules pattern /${pattern}/: ${detail}`);
+    return null;
+  }
+}
+
+function nameRuleMatchesDomain(rule: EntityNameRule, domain: string): boolean {
+  if (!Array.isArray(rule.domains) || rule.domains.length === 0) return true;
+  for (const entry of rule.domains) {
+    if (typeof entry === 'string' && entry.toLowerCase() === domain) return true;
+  }
+  return false;
+}
+
+/** Read `entity_name_rules` off a dashboard config object without a dynamic key lookup. */
+export function dashboardNameRules(config: unknown): EntityNameRule[] | undefined {
+  if (!config || typeof config !== 'object') return undefined;
+  const rules = Reflect.get(config, 'entity_name_rules');
+  if (!Array.isArray(rules) || rules.length === 0) return undefined;
+  return rules as EntityNameRule[];
+}
+
+/**
+ * Apply configured display-name rules in order.
+ * A rule that would erase the name is skipped. Whitespace is collapsed
+ * once, after a rule has actually changed the string.
+ */
+export function applyEntityNameRules(name: string, rules: EntityNameRule[] | undefined, domain?: string): string {
+  if (!rules || rules.length === 0 || typeof name !== 'string' || name.length === 0) return name;
+  if (rules.length > MAX_NAME_RULES) {
+    warnNameRule('cap', `entity_name_rules limited to the first ${MAX_NAME_RULES} entries`);
+  }
+
+  const entityDomain = domain ?? '';
+  let current = name;
+  let changed = false;
+  for (const rule of rules.slice(0, MAX_NAME_RULES)) {
+    if (!rule || typeof rule.pattern !== 'string' || rule.pattern.length === 0) continue;
+    if (!nameRuleMatchesDomain(rule, entityDomain)) continue;
+    if (!flagsAreLegal(rule.flags)) {
+      warnNameRule(
+        `flags:${String(rule.flags)}`,
+        `skipping entity_name_rules flags "${String(rule.flags)}" (allowed: i, g, m, u)`
+      );
+      continue;
+    }
+    const flags = sanitizeNameRuleFlags(rule.flags);
+    const regex = compiledNameRule(rule.pattern, flags);
+    if (!regex) continue;
+    regex.lastIndex = 0;
+    const replacement = typeof rule.replace === 'string' ? rule.replace : '';
+    const replaced = current.replace(regex, replacement);
+    if (replaced === current) continue;
+    if (replaced.replace(/\s+/g, ' ').trim().length === 0) continue;
+    current = replaced;
+    changed = true;
+  }
+
+  if (!changed) return name;
+  const collapsed = current.replace(/\s+/g, ' ').trim();
+  return collapsed.length === 0 ? name : collapsed;
+}
+
+/** Editor validation. Does not warn — the panel shows the problem inline. */
+export function entityNameRuleError(pattern: string, flags?: string): EntityNameRuleProblem | undefined {
+  if (typeof pattern !== 'string' || pattern.length === 0) return undefined;
+  if (pattern.length > MAX_NAME_PATTERN_LENGTH) return { code: 'too_long' };
+  if (!flagsAreLegal(flags)) return { code: 'bad_flags' };
+  try {
+    new RegExp(pattern, sanitizeNameRuleFlags(flags));
+    return undefined;
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : 'invalid pattern';
+    return { code: 'invalid', detail };
+  }
+}
+
+function isLovelaceCard(value: unknown): value is LovelaceCardConfig {
+  return !!value && typeof value === 'object' && typeof (value as LovelaceCardConfig).type === 'string';
+}
+
+function entityIdOf(node: LovelaceCardConfig): string | undefined {
+  if (typeof node.entity === 'string' && node.entity.includes('.')) return node.entity;
+  if (node.type === 'picture-glance' && typeof node.camera_image === 'string' && node.camera_image.includes('.')) {
+    return node.camera_image;
+  }
+  return undefined;
+}
+
+function rewriteName(node: LovelaceCardConfig, hass: HomeAssistant, rules: EntityNameRule[]): LovelaceCardConfig {
+  const entityId = entityIdOf(node);
+  if (!entityId) return node;
+  const domain = domainOf(entityId);
+  if (typeof node.name === 'string') {
+    const rewritten = applyEntityNameRules(node.name, rules, domain);
+    if (rewritten === node.name) return node;
+    return { ...node, name: rewritten };
+  }
+  const friendly = friendlyNameOf(hass, entityId);
+  if (!friendly) return node;
+  const rewritten = applyEntityNameRules(friendly, rules, domain);
+  if (rewritten === friendly) return node;
+  return { ...node, name: rewritten };
+}
+
+function rewriteGlanceTitle(
+  node: LovelaceCardConfig,
+  hass: HomeAssistant,
+  rules: EntityNameRule[]
+): LovelaceCardConfig {
+  const entityId = entityIdOf(node);
+  if (!entityId) return node;
+  const domain = domainOf(entityId);
+  if (typeof node.title === 'string') {
+    const rewritten = applyEntityNameRules(node.title, rules, domain);
+    if (rewritten === node.title) return node;
+    return { ...node, title: rewritten };
+  }
+  const friendly = friendlyNameOf(hass, entityId);
+  if (!friendly) return node;
+  const rewritten = applyEntityNameRules(friendly, rules, domain);
+  if (rewritten === friendly) return node;
+  return { ...node, title: rewritten };
+}
+
+function rewriteNamedEntity(
+  node: LovelaceCardConfig,
+  hass: HomeAssistant,
+  rules: EntityNameRule[]
+): LovelaceCardConfig {
+  if (node.type === 'picture-glance') return rewriteGlanceTitle(node, hass, rules);
+  return rewriteName(node, hass, rules);
+}
+
+function mapIfChanged<T>(items: readonly T[], mapFn: (item: T) => T): T[] | null {
+  const next: T[] = [];
+  let changed = false;
+  for (const item of items) {
+    const mapped = mapFn(item);
+    if (mapped !== item) changed = true;
+    next.push(mapped);
+  }
+  return changed ? next : null;
+}
+
+function applyToEntityListItem(
+  item: string | LovelaceCardConfig,
+  hass: HomeAssistant,
+  rules: EntityNameRule[]
+): string | LovelaceCardConfig {
+  if (typeof item !== 'object' || !item) return item;
+  return rewriteNamedEntity(item, hass, rules);
+}
+
+function applyToBadge(
+  badge: string | Partial<LovelaceBadgeConfig>,
+  hass: HomeAssistant,
+  rules: EntityNameRule[]
+): string | Partial<LovelaceBadgeConfig> {
+  if (typeof badge === 'string') {
+    if (!badge.includes('.')) return badge;
+    const friendly = friendlyNameOf(hass, badge);
+    if (!friendly) return badge;
+    const rewritten = applyEntityNameRules(friendly, rules, domainOf(badge));
+    if (rewritten === friendly) return badge;
+    return { type: 'entity', entity: badge, name: rewritten };
+  }
+  if (!badge || typeof badge !== 'object') return badge;
+  return rewriteNamedEntity(badge as LovelaceCardConfig, hass, rules);
+}
+
+function applyToCard(card: LovelaceCardConfig, hass: HomeAssistant, rules: EntityNameRule[]): LovelaceCardConfig {
+  let next = card;
+
+  if (Array.isArray(card.cards)) {
+    const cards = mapIfChanged(card.cards, (child) => applyToCard(child, hass, rules));
+    if (cards) next = { ...next, cards };
+  }
+
+  const nested = card.card;
+  if (isLovelaceCard(nested)) {
+    const mapped = applyToCard(nested, hass, rules);
+    if (mapped !== nested) next = { ...next, card: mapped };
+  }
+
+  if (Array.isArray(card.entities)) {
+    const entities = mapIfChanged(card.entities, (item: string | LovelaceCardConfig) =>
+      applyToEntityListItem(item, hass, rules)
+    );
+    if (entities) next = { ...next, entities };
+  }
+
+  if (Array.isArray(card.badges)) {
+    const badges = mapIfChanged(card.badges, (badge: string | Partial<LovelaceBadgeConfig>) =>
+      applyToBadge(badge, hass, rules)
+    );
+    if (badges) next = { ...next, badges };
+  }
+
+  return rewriteNamedEntity(next, hass, rules);
+}
+
+function applyToSection(
+  section: LovelaceSectionConfig,
+  hass: HomeAssistant,
+  rules: EntityNameRule[]
+): LovelaceSectionConfig {
+  if (!Array.isArray(section.cards)) return section;
+  const cards = mapIfChanged(section.cards, (card) => applyToCard(card, hass, rules));
+  if (!cards) return section;
+  return { ...section, cards };
+}
+
+/**
+ * Rewrite entity names on one generated view. No-op (same reference) when
+ * no rules are configured. Headings and cards without an entity are left
+ * alone. A tile keeps Home Assistant's native name unless a rule changes it.
+ */
+export function applyEntityNameRulesToView(
+  view: LovelaceViewConfig,
+  hass: HomeAssistant,
+  rules: EntityNameRule[] | undefined
+): LovelaceViewConfig {
+  if (!rules || rules.length === 0) return view;
+
+  let next = view;
+  if (Array.isArray(view.badges)) {
+    const badges = mapIfChanged(view.badges, (badge) => applyToBadge(badge, hass, rules));
+    if (badges) next = { ...next, badges };
+  }
+  if (Array.isArray(view.sections)) {
+    const sections = mapIfChanged(view.sections, (section) => applyToSection(section, hass, rules));
+    if (sections) next = { ...next, sections };
+  }
+  if (Array.isArray(view.cards)) {
+    const cards = mapIfChanged(view.cards, (card) => applyToCard(card, hass, rules));
+    if (cards) next = { ...next, cards };
+  }
+  if (view.sidebar && Array.isArray(view.sidebar.sections)) {
+    const sections = mapIfChanged(view.sidebar.sections, (section) => applyToSection(section, hass, rules));
+    if (sections) next = { ...next, sidebar: { ...view.sidebar, sections } };
+  }
+  return next;
 }

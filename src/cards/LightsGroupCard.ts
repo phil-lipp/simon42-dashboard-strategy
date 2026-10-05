@@ -8,8 +8,8 @@ import type { AreaRegistryEntry } from '../types/registries';
 import { Registry } from '../Registry';
 import { trackHassUpdate } from '../utils/debug';
 import { localize } from '../utils/localize';
-import { stripAreaName, getVisibleAreasFromHass } from '../utils/name-utils';
-import type { AreasDisplay } from '../types/strategy';
+import { applyEntityNameRules, dashboardNameRules, getVisibleAreasFromHass, stripAreaName } from '../utils/name-utils';
+import type { AreasDisplay, EntityNameRule } from '../types/strategy';
 import { isEntityCurrentlyAvailable } from '../utils/availability-utils';
 
 declare global {
@@ -245,11 +245,32 @@ class Simon42LightsGroupCard extends LitElement {
     return relevant.sort((a, b) => this._sortEntities(a, b));
   }
 
+  private _nameRules(): EntityNameRule[] | undefined {
+    return dashboardNameRules(this._config.config);
+  }
+
+  private _entityDomain(entityId: string): string {
+    const dot = entityId.indexOf('.');
+    return dot === -1 ? '' : entityId.slice(0, dot);
+  }
+
+  private _sortLabel(entityId: string): string {
+    const friendly = String(this._getState(entityId)?.attributes?.friendly_name || entityId);
+    const rules = this._nameRules();
+    if (!rules || !this.hass) return friendly;
+    if (this._config.area) {
+      return applyEntityNameRules(
+        stripAreaName(entityId, this._config.area, this.hass),
+        rules,
+        this._entityDomain(entityId)
+      );
+    }
+    return applyEntityNameRules(friendly, rules, this._entityDomain(entityId));
+  }
+
   private _sortEntities(a: string, b: string): number {
     if (this._config.sort_by === 'name') {
-      const nameA = this._getState(a)?.attributes?.friendly_name || a;
-      const nameB = this._getState(b)?.attributes?.friendly_name || b;
-      return String(nameA).localeCompare(String(nameB));
+      return this._sortLabel(a).localeCompare(this._sortLabel(b));
     }
     return this._sortByLastChanged(a, b);
   }
@@ -275,10 +296,17 @@ class Simon42LightsGroupCard extends LitElement {
 
   private _getDisplayName(entityId: string): string | undefined {
     if (!this.hass) return undefined;
+    const rules = this._nameRules();
+    const domain = this._entityDomain(entityId);
     if (this._config.area) {
-      return stripAreaName(entityId, this._config.area, this.hass);
+      const stripped = stripAreaName(entityId, this._config.area, this.hass);
+      return rules ? applyEntityNameRules(stripped, rules, domain) : stripped;
     }
-    return undefined;
+    if (!rules) return undefined;
+    const friendly = this._getState(entityId)?.attributes?.friendly_name;
+    if (typeof friendly !== 'string' || friendly.length === 0) return undefined;
+    const rewritten = applyEntityNameRules(friendly, rules, domain);
+    return rewritten === friendly ? undefined : rewritten;
   }
 
   private _getGroupChildIds(entityId: string, candidateSet: Set<string>): string[] {

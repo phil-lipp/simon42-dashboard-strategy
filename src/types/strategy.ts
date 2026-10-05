@@ -87,6 +87,21 @@ export const DEFAULT_STACKS_ORDER: StackKey[] = [
   'room_pins',
 ];
 
+// -- Entity display-name rules ----------------------------------------
+
+/**
+ * One regex find/replace applied to generated entity display names.
+ * Omitted or empty `replace` deletes the match. `$1`, `$2`, … work.
+ * `flags` may only contain `i`, `g`, `m`, `u`. `domains` limits the rule
+ * to those entity domains; omit it to run against every domain.
+ */
+export interface EntityNameRule {
+  pattern: string;
+  replace?: string;
+  flags?: string;
+  domains?: string[];
+}
+
 // -- Main Strategy Config ---------------------------------------------
 
 export interface Simon42StrategyConfig {
@@ -345,6 +360,13 @@ export interface Simon42StrategyConfig {
   room_pin_entities?: string[];
   security_extra_entities?: string[];
   light_favorite_entities?: string[]; // light.* glance row on overview (#176)
+
+  /**
+   * Regex find/replace rules for entity display names on generated views.
+   * Default: none — Home Assistant names stay as they are. Custom views
+   * are not rewritten. Fork feature.
+   */
+  entity_name_rules?: EntityNameRule[];
 
   // Area management
   use_default_area_sort?: boolean; // default: false

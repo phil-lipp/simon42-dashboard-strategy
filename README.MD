@@ -499,6 +499,20 @@ Entitäten können auf mehreren Ebenen gefiltert werden:
 | Entity Registry | Automatisch | Hidden/Disabled Entities werden ignoriert |
 | Entity Category | Automatisch | Config/Diagnostic Entities werden ignoriert |
 
+### Anzeigenamen per Regex *(fork)*
+
+`entity_name_rules` kürzt oder ersetzt die Namen, die das Dashboard auf generierten Karten zeigt. Ohne Einträge bleibt alles beim Home-Assistant-Namen. Die Regeln laufen nacheinander auf dem Namen, den die Karte sonst anzeigen würde — also nach dem automatischen Entfernen des Bereichsnamens und der Rollo-Begriffe. Eine leere `replace`-Angabe löscht den Treffer. `$1`, `$2`, … setzen Fanggruppen ein. `flags` darf nur `i`, `g`, `m`, `u` enthalten. `domains` beschränkt die Regel auf diese Entity-Domains. Eigene Custom Views werden nicht angefasst.
+
+```yaml
+entity_name_rules:
+  - pattern: "^Socket - Phillipp's "
+  - pattern: "^Steckdose\\s*-\\s*"
+    flags: i
+    domains: [switch]
+```
+
+Aus `Socket - Phillipp's TV` wird damit `TV`.
+
 ### Alle Optionen (Referenz)
 
 Die Spalte **Seit** gibt an, ab welcher Version die Option verfügbar ist. „—" bedeutet: seit v1.3.x oder länger.
@@ -553,6 +567,7 @@ Die Spalte **Seit** gibt an, ab welcher Version die Option verfügbar ist. „�
 | `theme` | string | — | v1.4.0 | Theme-Name, der auf alle Views gestempelt wird (native View-Eigenschaft `theme`) |
 | `background` | object | — | v1.4.0 | Hintergrundbild für alle Views im HA-View-Schema (`image`, `opacity`, `attachment`, `size`, `alignment`, `repeat`) |
 | `dense_section_placement` | boolean | `false` | v1.4.0 | Lücken im Raster aller generierten Ansichten auffüllen (Abschnitte können von der konfigurierten Reihenfolge abweichen) |
+| `entity_name_rules` | object[] | `[]` | fork | Regex-Ersetzungen für Anzeigenamen generierter Entitäten (`pattern`, optionales `replace`, `flags`, `domains`) |
 
 **Sections & Reihenfolge**
 

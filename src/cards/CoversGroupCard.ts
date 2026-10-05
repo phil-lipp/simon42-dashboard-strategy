@@ -9,7 +9,7 @@ import { Registry } from '../Registry';
 import { trackHassUpdate } from '../utils/debug';
 import { localize } from '../utils/localize';
 import { isEntityCurrentlyAvailable } from '../utils/availability-utils';
-import { getVisibleAreasFromHass } from '../utils/name-utils';
+import { applyEntityNameRules, dashboardNameRules, getVisibleAreasFromHass } from '../utils/name-utils';
 import type { AreasDisplay } from '../types/strategy';
 import { isCoverRelevantForGroup } from '../utils/cover-state-utils';
 
@@ -335,7 +335,12 @@ class Simon42CoversGroupCard extends LitElement {
       name = name.replace(regex, '');
     }
 
-    return name.trim() || state.attributes.friendly_name || entityId;
+    const stripped = name.trim() || state.attributes.friendly_name || entityId;
+    const rules = dashboardNameRules(this._config.config);
+    if (!rules) return stripped;
+    const dot = entityId.indexOf('.');
+    const domain = dot === -1 ? '' : entityId.slice(0, dot);
+    return applyEntityNameRules(stripped, rules, domain);
   }
 
   private _buildHeadingConfig(

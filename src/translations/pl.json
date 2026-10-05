@@ -517,7 +517,20 @@
     "design_bg_image_label": "Obraz tła",
     "design_bg_image_hint": "Wybierz obraz w oknie multimediów albo prześlij go bezpośrednio. Alternatywnie w YAML: background.image może także przyjmować ścieżkę/URL (np. /local/background.jpg); rozmiar i wyrównanie ustawisz dodatkowymi kluczami background.",
     "design_bg_opacity_label": "Krycie",
-    "design_bg_fixed_label": "Przypnij tło podczas przewijania"
+    "design_bg_fixed_label": "Przypnij tło podczas przewijania",
+    "section_entity_names": "Nazwy wyświetlane",
+    "entity_names_desc": "Wyrażenia regularne zmieniające nazwy encji na wygenerowanym dashboardzie. Reguły działają po kolei na nazwie, którą karta i tak by pokazała (po odcięciu nazwy obszaru i typu rolety). Pusta zamiana usuwa dopasowanie. $1, $2, … wstawiają grupy. Własne widoki pozostają bez zmian. Przykład: wzorzec ^Socket - Phillipp's  zamienia \"Socket - Phillipp's TV\" na \"TV\".",
+    "entity_names_pattern": "Wzorzec",
+    "entity_names_replace": "Zamiana (puste = usuń)",
+    "entity_names_flags": "Flagi (i, g, m, u)",
+    "entity_names_domains": "Domeny (opcjonalnie, rozdzielone przecinkami)",
+    "entity_names_add": "Dodaj regułę",
+    "entity_names_empty": "Brak reguł nazw.",
+    "entity_names_invalid": "Nieprawidłowe wyrażenie regularne",
+    "entity_names_too_long": "Wzorzec jest dłuższy niż 200 znaków",
+    "entity_names_bad_flags": "Flagi mogą zawierać tylko i, g, m i u",
+    "entity_names_preview": "Nazwy, które się zmienią",
+    "entity_names_preview_none": "Żadna obecna nazwa encji nie pasuje do tych reguł."
   },
   "custom_views": {
     "ref_error_title": "Nie udało się załadować widoku referencyjnego",

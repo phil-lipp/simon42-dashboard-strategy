@@ -62,7 +62,7 @@ class Simon42DashboardStrategy extends HTMLElement {
     t('modules ready');
 
     const { Registry } = await import('./Registry');
-    const { getVisibleAreasFromHass } = await import('./utils/name-utils');
+    const { getVisibleAreasFromHass, applyEntityNameRulesToView } = await import('./utils/name-utils');
     const { localize } = await import('./utils/localize');
     const { withUnavailableEntitiesHidden } = await import('./utils/availability-utils');
     const { applyViewVisibility } = await import('./utils/view-visibility');
@@ -219,9 +219,10 @@ class Simon42DashboardStrategy extends HTMLElement {
     // custom_sections/custom_cards: the card YAML is the user's).
     // The maintenance view is exempt: surfacing unavailable devices is its
     // whole point — the availability filter would hide exactly those tiles.
-    const generatedViews = views.map((view) =>
-      view.path === 'maintenance' ? view : withUnavailableEntitiesHidden(view, config)
-    );
+    const generatedViews = views.map((view) => {
+      const withAvailability = view.path === 'maintenance' ? view : withUnavailableEntitiesHidden(view, config);
+      return applyEntityNameRulesToView(withAvailability, hass, config.entity_name_rules);
+    });
 
     // YAML views are appended as-is; reference views (#169) are resolved
     // against their source dashboard via WebSocket at generate time.

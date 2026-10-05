@@ -517,7 +517,20 @@
     "design_bg_image_label": "Háttérkép",
     "design_bg_image_hint": "Válassz képet a médiaválasztóban, vagy tölts fel egyet közvetlenül. YAML-ban is megadhatod: a background.image elérési utat vagy URL-t is elfogad (pl. /local/background.jpg); a méret és az igazítás további background kulcsokkal állítható.",
     "design_bg_opacity_label": "Átlátszatlanság",
-    "design_bg_fixed_label": "Háttér rögzítése görgetés közben"
+    "design_bg_fixed_label": "Háttér rögzítése görgetés közben",
+    "section_entity_names": "Megjelenített nevek",
+    "entity_names_desc": "Reguláris kifejezések, amelyek a generált irányítópulton módosítják az entitásneveket. A szabályok sorban futnak azon a néven, amit a kártya egyébként mutatna (a területnév és a redőnytípus levágása után). Az üres csere törli a találatot. A $1, $2, … a csoportokat illeszti be. Az egyéni nézetek változatlanok maradnak. Példa: a ^Socket - Phillipp's  minta a \"Socket - Phillipp's TV\" nevet \"TV\"-re cseréli.",
+    "entity_names_pattern": "Minta",
+    "entity_names_replace": "Csere (üres = törlés)",
+    "entity_names_flags": "Jelzők (i, g, m, u)",
+    "entity_names_domains": "Domainek (opcionális, vesszővel elválasztva)",
+    "entity_names_add": "Szabály hozzáadása",
+    "entity_names_empty": "Még nincsenek névszabályok.",
+    "entity_names_invalid": "Érvénytelen reguláris kifejezés",
+    "entity_names_too_long": "A minta hosszabb 200 karakternél",
+    "entity_names_bad_flags": "A jelzők csak i, g, m és u karaktereket tartalmazhatnak",
+    "entity_names_preview": "Nevek, amelyek megváltoznak",
+    "entity_names_preview_none": "Egyetlen jelenlegi entitásnév sem illeszkedik ezekre a szabályokra."
   },
   "custom_views": {
     "ref_error_title": "Nem sikerült betölteni a hivatkozott nézetet",
