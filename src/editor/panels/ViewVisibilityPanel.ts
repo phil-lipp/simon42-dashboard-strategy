@@ -97,6 +97,7 @@ export function getViewOptions(host: StrategyEditorHost): RuleOption[] {
   add(isUtilityViewEnabled(config, 'batteries'), 'batteries', 'views.batteries');
   add(isUtilityViewEnabled(config, 'climate'), 'climate', 'views.climate');
   add(config.show_maintenance_summary === true, 'maintenance', 'views.maintenance');
+  add(config.show_entities_summary === true, 'entities', 'views.entities');
   add(config.show_camera_view === true, 'cameras', 'views.cameras');
 
   const roomVisibility = config.room_visibility || {};

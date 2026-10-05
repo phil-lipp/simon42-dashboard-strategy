@@ -13,6 +13,7 @@ import type { LovelaceCardConfig, LovelaceSectionConfig } from '../types/lovelac
 import { localize } from '../utils/localize';
 import { getViewVisibleUsers, userVisibilityConditions, unionVisibleUsers } from '../utils/view-visibility';
 import { summaryHiddenAreas } from '../utils/area-utils';
+import { findHealthScoreEntityId } from '../utils/health-score';
 
 /**
  * Spreadable user-visibility for a summary tile: the tile is the overview
@@ -147,6 +148,7 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
   const showBatterySummary = config.show_battery_summary !== false;
   const showClimateSummary = config.show_climate_summary === true;
   const showMaintenanceSummary = config.show_maintenance_summary === true;
+  const showEntitiesSummary = config.show_entities_summary === true;
   // Opt-in (#426): the maintenance tile hides itself at count 0 (runtime
   // check inside SummaryCard). Only meaningful with the tile enabled.
   const hideMaintenanceWhenOk = showMaintenanceSummary && config.hide_maintenance_summary_when_ok === true;
@@ -237,6 +239,15 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
         ? { maintenance_ignored_devices: config.maintenance_ignored_devices }
         : {}),
       ...(hideMaintenanceWhenOk ? { hide_when_ok: true } : {}),
+    });
+  }
+
+  // Tile only when the HAGHS sensor exists. The view itself still opens
+  // with an empty state so the toggle is not a silent no-op.
+  if (showEntitiesSummary && findHealthScoreEntityId()) {
+    pushSummary('entities', {
+      type: 'custom:simon42-summary-card',
+      summary_type: 'entities',
     });
   }
 

@@ -11,8 +11,9 @@ import { getBatteryEntities, isRelayOpeningSensor, SECURITY_EXCLUDED_PLATFORMS }
 import { isEntityCurrentlyAvailable } from '../utils/availability-utils';
 import { buildMaintenanceScan, countMaintenanceItems, type MaintenanceScan } from '../utils/maintenance-utils';
 import { countActiveClimateEntities } from '../utils/summary-view-utils';
+import { findHealthScoreEntityId, healthScoreColor, readHealthScore } from '../utils/health-score';
 
-type SummaryType = 'lights' | 'covers' | 'security' | 'batteries' | 'climate' | 'maintenance';
+type SummaryType = 'lights' | 'covers' | 'security' | 'batteries' | 'climate' | 'maintenance' | 'entities';
 
 // Cover states the covers view can bucket on directly; anything else that is
 // not "unavailable" (chiefly "unknown") is indeterminate and shown as open.
@@ -68,8 +69,15 @@ const COLOR_MAP: Record<string, string> = {
   purple: 'var(--purple-color, #9c27b0)',
   yellow: 'var(--yellow-color, #ffc107)',
   red: 'var(--red-color, #f44336)',
+  green: 'var(--success-color, #4caf50)',
   grey: 'var(--disabled-color, #bdbdbd)',
 };
+
+function firstEntityId(ids: Set<string> | null): string | undefined {
+  if (!ids) return undefined;
+  for (const id of ids) return id;
+  return undefined;
+}
 
 class Simon42SummaryCard extends LitElement {
   static properties = {
@@ -256,6 +264,12 @@ class Simon42SummaryCard extends LitElement {
         break;
       }
 
+      case 'entities': {
+        const id = findHealthScoreEntityId();
+        result = id ? [id] : [];
+        break;
+      }
+
       default:
         result = [];
     }
@@ -282,6 +296,14 @@ class Simon42SummaryCard extends LitElement {
       if (!this._maintenanceScan) return 0;
       const critThreshold = this._config.battery_critical_threshold ?? 20;
       return countMaintenanceItems(this.hass, this._maintenanceScan, critThreshold);
+    }
+
+    // One sensor, cached until the registry changes. -1 = missing or
+    // unavailable so a real score of 0 still renders as 0%.
+    if (this._config.summary_type === 'entities') {
+      const entityId = firstEntityId(this._relevantEntityIds);
+      if (!entityId) return -1;
+      return readHealthScore(this.hass, entityId);
     }
 
     if (!this._relevantEntityIds || this._relevantEntityIds.size === 0) return 0;
@@ -402,6 +424,12 @@ class Simon42SummaryCard extends LitElement {
           : localize('summary.maintenance_ok'),
         color: hasItems ? 'orange' : 'grey',
         path: 'maintenance',
+      },
+      entities: {
+        icon: 'mdi:shield-check',
+        name: count < 0 ? localize('entities.score_unavailable') : `${count}%`,
+        color: healthScoreColor(count),
+        path: 'entities',
       },
     };
 

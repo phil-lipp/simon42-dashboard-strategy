@@ -326,6 +326,7 @@ const RESERVED_VIEW_PATHS = new Set([
   'batteries',
   'climate',
   'maintenance',
+  'entities',
   'cameras',
 ]);
 
